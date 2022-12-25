@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use types::*;
-
 use std;
+
+use types::*;
 
 // TTEntry struct is the 10 bytes transposition-table entry, defined as below:
 //
@@ -46,7 +46,7 @@ impl TTEntry {
 
     pub fn save(
         &mut self, k: Key, v: Value, b: Bound, d: Depth, m: Move, ev: Value,
-        g: u8
+        g: u8,
     ) {
         debug_assert!(d / ONE_PLY * ONE_PLY == d);
 
@@ -202,11 +202,11 @@ pub fn probe(key: Key) -> (&'static mut TTEntry, bool) {
         // two bound bits from affecting the result) to calculate the entry
         // age correctly even after generation8 overflows into the next cycle.
         if (cl.entry[r].depth8 as i32) -
-                ((259 + (generation() as i32) -
-                        (cl.entry[r].gen_bound8 as i32)) & 0xfc) * 2
+            ((259 + (generation() as i32) -
+                (cl.entry[r].gen_bound8 as i32)) & 0xfc) * 2
             > (cl.entry[i].depth8 as i32) -
-                ((259 + (generation() as i32) -
-                        (cl.entry[i].gen_bound8 as i32)) & 0xfc) * 2
+            ((259 + (generation() as i32) -
+                (cl.entry[i].gen_bound8 as i32)) & 0xfc) * 2
         {
             r = i;
         }

@@ -1,5 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+use std;
+use std::sync::{Arc, Condvar, Mutex, RwLock};
+use std::sync::atomic::*;
+use std::sync::mpsc::*;
+use std::thread;
+
 use material;
 use movegen::*;
 use pawns;
@@ -8,12 +14,6 @@ use search::*;
 use tb;
 use types::*;
 use ucioption;
-
-use std;
-use std::sync::{Arc, Condvar, Mutex, RwLock};
-use std::sync::atomic::*;
-use std::sync::mpsc::*;
-use std::thread;
 
 pub struct PosData {
     pub fen: String,
@@ -49,8 +49,8 @@ pub struct ThreadCtrl {
 
 impl ThreadCtrl {
     pub fn new(idx: usize) -> ThreadCtrl {
-        let thread_ctrl = ThreadCtrl {
-            idx: idx,
+        ThreadCtrl {
+            idx,
             state: Mutex::new(ThreadState {
                 exit: false,
                 searching: true,
@@ -60,7 +60,7 @@ impl ThreadCtrl {
                 root_moves: Arc::new(Vec::new()),
                 pos_data: Arc::new(RwLock::new(PosData {
                     fen: String::new(),
-                    moves: Vec::new()
+                    moves: Vec::new(),
                 })),
                 result: Arc::new(Mutex::new(SearchResult {
                     depth: Depth::ZERO,
@@ -71,8 +71,7 @@ impl ThreadCtrl {
             cv: Condvar::new(),
             nodes: AtomicU64::new(0),
             tb_hits: AtomicU64::new(0),
-        };
-        thread_ctrl
+        }
     }
 }
 
@@ -111,8 +110,8 @@ pub fn set_stop_on_ponderhit(b: bool) {
 }
 
 pub fn init(requested: usize) {
-    let handlers: Box<Handlers> = Box::new(Vec::new());
-    let threads: Box<Threads> = Box::new(Vec::new());
+    let handlers: Box<Handlers> = Box::default();
+    let threads: Box<Threads> = Box::default();
     unsafe {
         HANDLERS = Box::into_raw(handlers);
         THREADS = Box::into_raw(threads);
@@ -124,8 +123,8 @@ pub fn init(requested: usize) {
 pub fn free() {
     set(0);
     unsafe {
-        std::mem::drop(Box::from_raw(HANDLERS));
-        std::mem::drop(Box::from_raw(THREADS));
+        drop(Box::from_raw(HANDLERS));
+        drop(Box::from_raw(THREADS));
     }
 }
 
@@ -221,7 +220,7 @@ fn run_thread(idx: usize, tx: Sender<Arc<ThreadCtrl>>) {
             let result = &mut lock.result.lock().unwrap();
             if pos.root_moves[0].score > result.score
                 && (pos.completed_depth >= result.depth
-                    || pos.root_moves[0].score >= Value::MATE_IN_MAX_PLY)
+                || pos.root_moves[0].score >= Value::MATE_IN_MAX_PLY)
             {
                 result.depth = pos.completed_depth;
                 result.score = pos.root_moves[0].score;
@@ -312,7 +311,7 @@ pub fn wait_for_all()
 
 pub fn start_thinking(
     pos: &mut Position, pos_data: &Arc<RwLock<PosData>>, limits: &LimitsType,
-    searchmoves: Vec<Move>, ponder_mode: bool
+    searchmoves: Vec<Move>, ponder_mode: bool,
 ) {
     let threads: Box<Threads> = unsafe { Box::from_raw(THREADS) };
 

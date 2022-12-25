@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+use std;
+use std::env;
+use std::sync::{Arc, RwLock};
+use std::time::Instant;
+
 use benchmark::*;
 use misc;
 use movegen::*;
@@ -10,13 +15,8 @@ use threads::PosData;
 use types::*;
 use ucioption;
 
-use std;
-use std::env;
-use std::sync::{Arc, RwLock};
-use std::time::Instant;
-
 // FEN string of the initial position, normal chess
-const START_FEN: &'static str =
+const START_FEN: &str =
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 // position() is called when engine receives the "position" UCI command.
@@ -35,7 +35,7 @@ fn position(pos: &mut Position, pos_data: &mut PosData, args: &str) {
     if &args[0..8] == "startpos" {
         fen = START_FEN;
     } else if &args[0..3] == "fen" {
-        fen = (&args[3..moves]).trim();
+        fen = args[3..moves].trim();
     } else {
         return;
     }
@@ -50,7 +50,7 @@ fn position(pos: &mut Position, pos_data: &mut PosData, args: &str) {
     }
 
     // Parse move list
-    let moves = &args[moves+5..].trim();
+    let moves = &args[moves + 5..].trim();
     let iter = moves.split_whitespace();
     for token in iter {
         let m = to_move(pos, token);
@@ -68,14 +68,14 @@ fn position(pos: &mut Position, pos_data: &mut PosData, args: &str) {
 
 fn setoption(args: &str) {
     let idx = args.find("name").unwrap();
-    let args = &args[idx+4..];
+    let args = &args[idx + 4..];
     if let Some(idx) = args.find("value") {
         let name = &args[..idx].trim();
-        let value = &args[idx+5..].trim();
+        let value = &args[idx + 5..].trim();
         ucioption::set(name, value);
     } else {
         let name = args.trim();
-        ucioption::set(name, &"");
+        ucioption::set(name, "");
     }
 }
 
@@ -92,7 +92,7 @@ fn go(pos: &mut Position, pos_data: &Arc<RwLock<PosData>>, args: &str) {
     while let Some(token) = iter.next() {
         match token {
             "searchmoves" => {
-                while let Some(token) = iter.next() {
+                for token in iter.by_ref() {
                     searchmoves.push(to_move(pos, token));
                 }
             }
@@ -127,14 +127,14 @@ fn go(pos: &mut Position, pos_data: &Arc<RwLock<PosData>>, args: &str) {
 
 fn bench(pos: &mut Position, pos_data: &Arc<RwLock<PosData>>, args: &str) {
     let list = setup_bench(pos, args);
-    let num = list.iter().filter(|&s| s.find("go ") != None).count();
+    let num = list.iter().filter(|&s| s.contains("go ")).count();
 
     let now = Instant::now();
 
     let mut cnt = 1;
     let mut nodes = 0;
     for cmd in list.iter() {
-        let cmd_slice: &str = &cmd;
+        let cmd_slice: &str = cmd;
         let (token, args) =
             if let Some(idx) = cmd_slice.find(char::is_whitespace) {
                 cmd_slice.split_at(idx)
@@ -158,14 +158,14 @@ fn bench(pos: &mut Position, pos_data: &Arc<RwLock<PosData>>, args: &str) {
     }
 
     let duration = now.elapsed();
-    let elapsed = (duration.as_secs() as u64) * 1000
+    let elapsed = duration.as_secs() * 1000
         + (duration.subsec_nanos() as u64) / 10000000 + 1;
 
     eprintln!("\n===========================\
         \nTotal time (ms) : {}\
         \nNode searched   : {}\
         \nNodes/second    : {}",
-        elapsed, nodes, 1000 * nodes / elapsed);
+              elapsed, nodes, 1000 * nodes / elapsed);
 }
 
 // cmd_loop() waits for a command from stdin, parses it and calls the
@@ -196,7 +196,7 @@ pub fn cmd_loop() {
         if env::args().len() == 1 {
             cmd = String::new();
             // Block here waiting for input or EOF
-            if let Err(_) = std::io::stdin().read_line(&mut cmd) {
+            if std::io::stdin().read_line(&mut cmd).is_err() {
                 cmd = String::from("quit");
             }
         }
@@ -265,13 +265,11 @@ pub fn value(v: Value) -> String {
         s.push_str(&(v * 100 / PawnValueEg).to_string());
     } else {
         s.push_str("mate ");
-        let mut dtm = if v > Value::ZERO { (Value::MATE - v).0 + 1 }
-            else { (-Value::MATE - v).0 };
+        let mut dtm = if v > Value::ZERO { (Value::MATE - v).0 + 1 } else { (-Value::MATE - v).0 };
         dtm /= 2;
         s.push_str(&dtm.to_string());
     }
-
-    return s;
+    s
 }
 
 // square() converts a Square to a string in algebraic notation (g1, a7, etc.)
@@ -320,8 +318,7 @@ pub fn move_str(m: Move, chess960: bool) -> String {
 // (g1f3, a7a8q) to the corresponding legal Move, if any.
 
 pub fn to_move(pos: &Position, s: &str) -> Move {
-    if s.len() == 5 {
-    }
+    if s.len() == 5 {}
 
     for m in MoveList::new::<Legal>(pos) {
         if s == move_str(m, pos.is_chess960()) {

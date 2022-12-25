@@ -24,7 +24,7 @@ impl std::fmt::Display for Key {
 
 pub const MAX_MOVES: usize = 256;
 pub const MAX_PLY: i32 = 128;
-pub const MAX_MATE_PLY : i32 = 128;
+pub const MAX_MATE_PLY: i32 = 128;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Color(pub u32);
@@ -53,6 +53,7 @@ impl Iterator for Color {
 }
 
 pub struct White;
+
 pub struct Black;
 
 pub trait ColorTrait {
@@ -77,17 +78,17 @@ impl ColorTrait for Black {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum CastlingSide {
     KING,
-    QUEEN
+    QUEEN,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct CastlingRight(pub u32);
 
-pub const NO_CASTLING : CastlingRight = CastlingRight(0);
-pub const WHITE_OO    : CastlingRight = CastlingRight(1);
-pub const WHITE_OOO   : CastlingRight = CastlingRight(2);
-pub const BLACK_OO    : CastlingRight = CastlingRight(4);
-pub const BLACK_OOO   : CastlingRight = CastlingRight(8);
+pub const NO_CASTLING: CastlingRight = CastlingRight(0);
+pub const WHITE_OO: CastlingRight = CastlingRight(1);
+pub const WHITE_OOO: CastlingRight = CastlingRight(2);
+pub const BLACK_OO: CastlingRight = CastlingRight(4);
+pub const BLACK_OOO: CastlingRight = CastlingRight(8);
 pub const ANY_CASTLING: CastlingRight = CastlingRight(15);
 
 pub trait CastlingRightTrait {
@@ -95,8 +96,11 @@ pub trait CastlingRightTrait {
 }
 
 pub struct WhiteOO;
+
 pub struct WhiteOOO;
+
 pub struct BlackOO;
+
 pub struct BlackOOO;
 
 impl CastlingRightTrait for WhiteOO {
@@ -120,11 +124,11 @@ impl CastlingRight {
         use types::CastlingSide::*;
         match (c, cs) {
             (WHITE, KING) => WHITE_OO,
-            (WHITE, _   ) => WHITE_OOO,
-            (_    , KING) => BLACK_OO,
-            (_    , _   ) => BLACK_OOO
+            (WHITE, _) => WHITE_OOO,
+            (_, KING) => BLACK_OO,
+            (_, _) => BLACK_OOO
         }
-     }
+    }
 }
 
 impl std::ops::BitOr<CastlingSide> for Color {
@@ -157,7 +161,7 @@ impl std::ops::Not for CastlingRight {
     fn not(self) -> Self { CastlingRight(!self.0) }
 }
 
-impl std::cmp::PartialEq<u32> for CastlingRight {
+impl PartialEq<u32> for CastlingRight {
     fn eq(&self, rhs: &u32) -> bool {
         debug_assert!(*rhs == 0);
         self.0 == *rhs
@@ -176,18 +180,18 @@ pub const EG: usize = 1;
 pub struct ScaleFactor(pub i32);
 
 impl ScaleFactor {
-    pub const DRAW   : ScaleFactor = ScaleFactor(0);
+    pub const DRAW: ScaleFactor = ScaleFactor(0);
     pub const ONEPAWN: ScaleFactor = ScaleFactor(48);
-    pub const NORMAL : ScaleFactor = ScaleFactor(64);
-    pub const MAX    : ScaleFactor = ScaleFactor(128);
-    pub const NONE   : ScaleFactor = ScaleFactor(255);
+    pub const NORMAL: ScaleFactor = ScaleFactor(64);
+    pub const MAX: ScaleFactor = ScaleFactor(128);
+    pub const NONE: ScaleFactor = ScaleFactor(255);
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Bound(pub u32);
 
 impl Bound {
-    pub const NONE : Bound = Bound(0);
+    pub const NONE: Bound = Bound(0);
     pub const UPPER: Bound = Bound(1);
     pub const LOWER: Bound = Bound(2);
     pub const EXACT: Bound = Bound(3);
@@ -203,7 +207,7 @@ impl std::ops::BitOr<Bound> for Bound {
     fn bitor(self, rhs: Self) -> Self { Bound(self.0 | rhs.0) }
 }
 
-impl std::cmp::PartialEq<u32> for Bound {
+impl PartialEq<u32> for Bound {
     fn eq(&self, rhs: &u32) -> bool {
         debug_assert!(*rhs == 0);
         self.0 == *rhs
@@ -215,22 +219,27 @@ pub struct PieceType(pub u32);
 
 pub const NO_PIECE_TYPE: PieceType = PieceType(0);
 
-pub const PAWN  : PieceType = PieceType(1);
+pub const PAWN: PieceType = PieceType(1);
 pub const KNIGHT: PieceType = PieceType(2);
 pub const BISHOP: PieceType = PieceType(3);
-pub const ROOK  : PieceType = PieceType(4);
-pub const QUEEN : PieceType = PieceType(5);
-pub const KING  : PieceType = PieceType(6);
+pub const ROOK: PieceType = PieceType(4);
+pub const QUEEN: PieceType = PieceType(5);
+pub const KING: PieceType = PieceType(6);
 
 pub const QUEEN_DIAGONAL: PieceType = PieceType(7);
 
 pub const ALL_PIECES: PieceType = PieceType(0);
 
 pub struct Pawn;
+
 pub struct Knight;
+
 pub struct Bishop;
+
 pub struct Rook;
+
 pub struct Queen;
+
 pub struct King;
 
 pub trait PieceTypeTrait {
@@ -262,25 +271,24 @@ impl PieceTypeTrait for King {
 }
 
 
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Piece(pub u32);
 
 pub const NO_PIECE: Piece = Piece(0);
 
-pub const W_PAWN  : Piece = Piece(1);
+pub const W_PAWN: Piece = Piece(1);
 pub const W_KNIGHT: Piece = Piece(2);
 pub const W_BISHOP: Piece = Piece(3);
-pub const W_ROOK  : Piece = Piece(4);
-pub const W_QUEEN : Piece = Piece(5);
-pub const W_KING  : Piece = Piece(6);
+pub const W_ROOK: Piece = Piece(4);
+pub const W_QUEEN: Piece = Piece(5);
+pub const W_KING: Piece = Piece(6);
 
-pub const B_PAWN  : Piece = Piece(9);
+pub const B_PAWN: Piece = Piece(9);
 pub const B_KNIGHT: Piece = Piece(10);
 pub const B_BISHOP: Piece = Piece(11);
-pub const B_ROOK  : Piece = Piece(12);
-pub const B_QUEEN : Piece = Piece(13);
-pub const B_KING  : Piece = Piece(14);
+pub const B_ROOK: Piece = Piece(12);
+pub const B_QUEEN: Piece = Piece(13);
+pub const B_KING: Piece = Piece(14);
 
 impl Piece {
     pub fn piece_type(self) -> PieceType { PieceType(self.0 & 7) }
@@ -347,22 +355,22 @@ impl std::ops::Div<Depth> for Depth {
 
 pub const ONE_PLY: Depth = Depth(1);
 
-pub const DEPTH_ZERO         : Depth = Depth( 0 * ONE_PLY.0);
-pub const DEPTH_QS_CHECKS    : Depth = Depth( 0 * ONE_PLY.0);
-pub const DEPTH_QS_NO_CHECKS : Depth = Depth(-1 * ONE_PLY.0);
+pub const DEPTH_ZERO: Depth = Depth(0 * ONE_PLY.0);
+pub const DEPTH_QS_CHECKS: Depth = Depth(0 * ONE_PLY.0);
+pub const DEPTH_QS_NO_CHECKS: Depth = Depth(-ONE_PLY.0);
 pub const DEPTH_QS_RECAPTURES: Depth = Depth(-5 * ONE_PLY.0);
 
 pub const DEPTH_NONE: Depth = Depth(-6 * ONE_PLY.0);
-pub const DEPTH_MAX : Depth = Depth(MAX_PLY * ONE_PLY.0);
+pub const DEPTH_MAX: Depth = Depth(MAX_PLY * ONE_PLY.0);
 
 impl Depth {
-    pub const ZERO         : Depth = Depth( 0 * ONE_PLY.0);
-    pub const QS_CHECKS    : Depth = Depth( 0 * ONE_PLY.0);
-    pub const QS_NO_CHECKS : Depth = Depth(-1 * ONE_PLY.0);
+    pub const ZERO: Depth = Depth(0 * ONE_PLY.0);
+    pub const QS_CHECKS: Depth = Depth(0 * ONE_PLY.0);
+    pub const QS_NO_CHECKS: Depth = Depth(-ONE_PLY.0);
     pub const QS_RECAPTURES: Depth = Depth(-5 * ONE_PLY.0);
 
     pub const NONE: Depth = Depth(-6 * ONE_PLY.0);
-    pub const MAX : Depth = Depth(MAX_PLY * ONE_PLY.0);
+    pub const MAX: Depth = Depth(MAX_PLY * ONE_PLY.0);
 }
 
 pub type File = u32;
@@ -514,7 +522,7 @@ impl Iterator for Square {
 #[derive(Clone, Copy)]
 pub struct Squares {
     pub start: Square,
-    pub end: Square
+    pub end: Square,
 }
 
 impl Iterator for Squares {
@@ -532,12 +540,12 @@ impl Iterator for Squares {
 
 pub struct SquareList<'a> {
     list: &'a [Square],
-    idx: usize
+    idx: usize,
 }
 
 impl<'a> SquareList<'a> {
     pub fn construct(list: &'a [Square]) -> SquareList<'a> {
-        SquareList { list: list, idx: 0 }
+        SquareList { list, idx: 0 }
     }
 }
 
@@ -567,13 +575,13 @@ impl std::ops::Neg for Direction {
     fn neg(self) -> Self { Direction(-self.0) }
 }
 
-pub const NORTH: Direction = Direction( 8);
-pub const EAST : Direction = Direction( 1);
+pub const NORTH: Direction = Direction(8);
+pub const EAST: Direction = Direction(1);
 pub const SOUTH: Direction = Direction(-8);
-pub const WEST : Direction = Direction(-1);
+pub const WEST: Direction = Direction(-1);
 
-pub const NORTH_EAST: Direction = Direction( 9);
-pub const NORTH_WEST: Direction = Direction( 7);
+pub const NORTH_EAST: Direction = Direction(9);
+pub const NORTH_WEST: Direction = Direction(7);
 pub const SOUTH_EAST: Direction = Direction(-7);
 pub const SOUTH_WEST: Direction = Direction(-9);
 
@@ -612,24 +620,24 @@ impl std::ops::Mul<Direction> for i32 {
 pub fn pawn_push(c: Color) -> Direction {
     match c {
         WHITE => NORTH,
-        _     => SOUTH
+        _ => SOUTH
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct MoveType(pub u32);
 
-pub const NORMAL    : MoveType = MoveType(0);
-pub const PROMOTION : MoveType = MoveType(1 << 14);
-pub const ENPASSANT : MoveType = MoveType(2 << 14);
-pub const CASTLING  : MoveType = MoveType(3 << 14);
+pub const NORMAL: MoveType = MoveType(0);
+pub const PROMOTION: MoveType = MoveType(1 << 14);
+pub const ENPASSANT: MoveType = MoveType(2 << 14);
+pub const CASTLING: MoveType = MoveType(3 << 14);
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Move(pub u32);
 
 impl Move {
-    pub const NONE : Move = Move(0);
-    pub const NULL : Move = Move(65);
+    pub const NONE: Move = Move(0);
+    pub const NULL: Move = Move(65);
 
     pub fn from(self) -> Square {
         Square((self.0 >> 6) & 0x3f)
@@ -672,15 +680,15 @@ impl Move {
 pub struct Value(pub i32);
 
 impl Value {
-    pub const ZERO     : Value = Value(0);
-    pub const DRAW     : Value = Value(0);
+    pub const ZERO: Value = Value(0);
+    pub const DRAW: Value = Value(0);
     pub const KNOWN_WIN: Value = Value(10000);
-    pub const MATE     : Value = Value(32000);
-    pub const INFINITE : Value = Value(32001);
-    pub const NONE     : Value = Value(32002);
+    pub const MATE: Value = Value(32000);
+    pub const INFINITE: Value = Value(32001);
+    pub const NONE: Value = Value(32002);
 
-    pub const MATE_IN_MAX_PLY : Value =
-        Value( Value::MATE.0 - MAX_MATE_PLY - MAX_PLY);
+    pub const MATE_IN_MAX_PLY: Value =
+        Value(Value::MATE.0 - MAX_MATE_PLY - MAX_PLY);
     pub const MATED_IN_MAX_PLY: Value =
         Value(-Value::MATE.0 + MAX_MATE_PLY + MAX_PLY);
 
@@ -690,39 +698,39 @@ impl Value {
 }
 
 #[allow(non_upper_case_globals)]
-pub const PawnValueMg  : Value = Value(171);
+pub const PawnValueMg: Value = Value(171);
 #[allow(non_upper_case_globals)]
 pub const KnightValueMg: Value = Value(764);
 #[allow(non_upper_case_globals)]
 pub const BishopValueMg: Value = Value(826);
 #[allow(non_upper_case_globals)]
-pub const RookValueMg  : Value = Value(1282);
+pub const RookValueMg: Value = Value(1282);
 #[allow(non_upper_case_globals)]
-pub const QueenValueMg : Value = Value(2526);
+pub const QueenValueMg: Value = Value(2526);
 
 #[allow(non_upper_case_globals)]
-pub const PawnValueEg  : Value = Value(240);
+pub const PawnValueEg: Value = Value(240);
 #[allow(non_upper_case_globals)]
 pub const KnightValueEg: Value = Value(848);
 #[allow(non_upper_case_globals)]
 pub const BishopValueEg: Value = Value(891);
 #[allow(non_upper_case_globals)]
-pub const RookValueEg  : Value = Value(1373);
+pub const RookValueEg: Value = Value(1373);
 #[allow(non_upper_case_globals)]
-pub const QueenValueEg : Value = Value(2646);
+pub const QueenValueEg: Value = Value(2646);
 
-pub const MIDGAME_LIMIT : Value = Value(15258);
-pub const ENDGAME_LIMIT : Value = Value(3915);
+pub const MIDGAME_LIMIT: Value = Value(15258);
+pub const ENDGAME_LIMIT: Value = Value(3915);
 
 const PIECE_VALUE: [[Value; 16]; 2] = [
-    [ Value::ZERO, PawnValueMg, KnightValueMg, BishopValueMg,
-      RookValueMg, QueenValueMg, Value::ZERO, Value::ZERO,
-      Value::ZERO, PawnValueMg, KnightValueMg, BishopValueMg,
-      RookValueMg, QueenValueMg, Value::ZERO, Value::ZERO ],
-    [ Value::ZERO, PawnValueEg, KnightValueEg, BishopValueEg,
-      RookValueEg, QueenValueEg, Value::ZERO, Value::ZERO,
-      Value::ZERO, PawnValueEg, KnightValueEg, BishopValueEg,
-      RookValueEg, QueenValueEg, Value::ZERO, Value::ZERO ]
+    [Value::ZERO, PawnValueMg, KnightValueMg, BishopValueMg,
+        RookValueMg, QueenValueMg, Value::ZERO, Value::ZERO,
+        Value::ZERO, PawnValueMg, KnightValueMg, BishopValueMg,
+        RookValueMg, QueenValueMg, Value::ZERO, Value::ZERO],
+    [Value::ZERO, PawnValueEg, KnightValueEg, BishopValueEg,
+        RookValueEg, QueenValueEg, Value::ZERO, Value::ZERO,
+        Value::ZERO, PawnValueEg, KnightValueEg, BishopValueEg,
+        RookValueEg, QueenValueEg, Value::ZERO, Value::ZERO]
 ];
 
 pub fn piece_value(phase: usize, pc: Piece) -> Value {
@@ -856,6 +864,7 @@ impl std::ops::Mul<i32> for Score {
 }
 
 pub struct True {}
+
 pub struct False {}
 
 pub trait Bool {

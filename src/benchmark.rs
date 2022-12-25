@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use position::Position;
-
 use std;
 use std::fs::File;
 use std::io::BufRead;
+
+use position::Position;
 
 const DEFAULTS: [&str; 45] = [
     "setoption name UCI_Chess960 value false",
@@ -84,10 +84,10 @@ pub fn setup_bench(pos: &Position, args: &str) -> Vec<String>
     let mut iter = args.split_whitespace();
 
     // Assign default values to missing arguments
-    let tt_size    = if let Some(t) = iter.next() { t } else { "16" };
-    let threads    = if let Some(t) = iter.next() { t } else { "1" };
-    let limit      = if let Some(t) = iter.next() { t } else { "13" };
-    let fen_file   = if let Some(t) = iter.next() { t } else { "default" };
+    let tt_size = if let Some(t) = iter.next() { t } else { "16" };
+    let threads = if let Some(t) = iter.next() { t } else { "1" };
+    let limit = if let Some(t) = iter.next() { t } else { "13" };
+    let fen_file = if let Some(t) = iter.next() { t } else { "default" };
     let limit_type = if let Some(t) = iter.next() { t } else { "depth" };
 
     let go = format!("go {} {}", limit_type, limit);
@@ -105,7 +105,7 @@ pub fn setup_bench(pos: &Position, args: &str) -> Vec<String>
             Err(_) => {
                 eprintln!("Unable to open file {}", fen_file);
                 std::process::exit(-1);
-            },
+            }
             Ok(file) => file,
         };
         let reader = std::io::BufReader::new(file);
@@ -126,7 +126,7 @@ pub fn setup_bench(pos: &Position, args: &str) -> Vec<String>
     list.push(format!("setoption name Hash value {}", tt_size));
 
     for fen in fens {
-        if fen.find("setoption") != None {
+        if fen.contains("setoption") {
             list.push(fen);
         } else {
             list.push(format!("position fen {}", fen));

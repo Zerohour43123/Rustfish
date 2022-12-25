@@ -2,6 +2,8 @@
 
 extern crate memmap;
 
+use std::thread;
+
 mod benchmark;
 mod bitbases;
 #[macro_use]
@@ -24,8 +26,6 @@ mod types;
 mod uci;
 mod ucioption;
 
-use std::thread;
-
 fn main() {
     println!("{}", misc::engine_info(false));
 
@@ -45,7 +45,7 @@ fn main() {
     // To avoid a stack overflow, we create a thread with a large
     // enough stack size to run the UI.
     let builder = thread::Builder::new().stack_size(16 * 1024 * 1024);
-    let ui_thread = builder.spawn(|| uci::cmd_loop()).unwrap();
+    let ui_thread = builder.spawn(uci::cmd_loop).unwrap();
     let _ = ui_thread.join();
     // uci::cmd_loop();
 

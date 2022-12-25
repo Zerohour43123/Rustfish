@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+use std;
+use std::sync::Arc;
+
 use bitboard::*;
 use material;
 use movegen::*;
@@ -12,13 +15,10 @@ use threads::ThreadCtrl;
 use types::*;
 use uci;
 
-use std;
-use std::sync::Arc;
-
 pub mod zobrist {
-    use types::*;
     use bitboard;
     use misc;
+    use types::*;
 
     static mut PSQ: [[Key; 64]; 16] = [[Key(0); 64]; 16];
     static mut ENPASSANT: [Key; 8] = [Key(0); 8];
@@ -339,12 +339,12 @@ impl Position {
     }
 
     pub fn attackers_to_occ(&self, s: Square, occ: Bitboard) -> Bitboard {
-          (self.attacks_from_pawn(s, BLACK) & self.pieces_cp(WHITE, PAWN))
-        | (self.attacks_from_pawn(s, WHITE) & self.pieces_cp(BLACK, PAWN))
-        | (self.attacks_from(KNIGHT, s)     & self.pieces_p(KNIGHT))
-        | (     attacks_bb(ROOK, s, occ)    & self.pieces_pp(ROOK, QUEEN))
-        | (     attacks_bb(BISHOP, s, occ)  & self.pieces_pp(BISHOP, QUEEN))
-        | (self.attacks_from(KING, s)       & self.pieces_p(KING))
+        (self.attacks_from_pawn(s, BLACK) & self.pieces_cp(WHITE, PAWN))
+            | (self.attacks_from_pawn(s, WHITE) & self.pieces_cp(BLACK, PAWN))
+            | (self.attacks_from(KNIGHT, s) & self.pieces_p(KNIGHT))
+            | (attacks_bb(ROOK, s, occ) & self.pieces_pp(ROOK, QUEEN))
+            | (attacks_bb(BISHOP, s, occ) & self.pieces_pp(BISHOP, QUEEN))
+            | (self.attacks_from(KING, s) & self.pieces_p(KING))
     }
 
     pub fn attackers_to(&self, s: Square) -> Bitboard {
@@ -373,7 +373,7 @@ impl Position {
 
     pub fn advanced_pawn_push(&self, m: Move) -> bool {
         self.moved_piece(m).piece_type() == PAWN
-        && m.from().relative_rank(self.side_to_move()) > RANK_4
+            && m.from().relative_rank(self.side_to_move()) > RANK_4
     }
 
     pub fn key(&self) -> Key {
@@ -410,9 +410,9 @@ impl Position {
 
     pub fn opposite_bishops(&self) -> bool {
         self.piece_count[W_BISHOP.0 as usize] == 1
-        && self.piece_count[B_BISHOP.0 as usize] == 1
-        && opposite_colors( self.square(WHITE, BISHOP),
-            self.square(BLACK, BISHOP))
+            && self.piece_count[B_BISHOP.0 as usize] == 1
+            && opposite_colors(self.square(WHITE, BISHOP),
+                               self.square(BLACK, BISHOP))
     }
 
     pub fn is_chess960(&self) -> bool {
@@ -431,7 +431,7 @@ impl Position {
     pub fn capture(&self, m: Move) -> bool {
         debug_assert!(m.is_ok());
         (!self.empty(m.to()) && m.move_type() != CASTLING)
-        || m.move_type() == ENPASSANT
+            || m.move_type() == ENPASSANT
     }
 
     pub fn captured_piece(&self) -> Piece {
@@ -452,7 +452,7 @@ impl Position {
         }
 
         println!("\nFen: {}\nKey: {}\nCheckers: {}", self.fen(), self.key(),
-            self.checkers());
+                 self.checkers());
 
         if tb::max_cardinality() >= popcount(self.pieces())
             && !self.has_castling_right(ANY_CASTLING)
@@ -462,7 +462,7 @@ impl Position {
             let wdl = tb::probe_wdl(self, &mut s1);
             let dtz = tb::probe_dtz(self, &mut s2);
             println!("Tablebases WDL: {} ({})\nTablebases DTZ: {} ({})",
-                wdl, s1, dtz, s2);
+                     wdl, s1, dtz, s2);
             if s1 != 0 {
                 let dtm = tb::probe_dtm(self, wdl, &mut s1);
                 println!("Tablebases DTM: {} ({})", uci::value(dtm), s1);
@@ -473,7 +473,7 @@ impl Position {
     // set() initializes the position objection with the given FEN string.
     // This function is not very robust - make sure that input FENs are
     // correct. This is assumed to be the responsibility of the GUI.
- 
+
     pub fn set(&mut self, fen_str: &str, is_chess960: bool) {
         for c in 0..2 {
             self.by_color_bb[c] = Bitboard(0);
@@ -537,7 +537,7 @@ impl Position {
                     while self.piece_on(rsq) != rook {
                         rsq += EAST;
                     }
-                } else if side >= 'A' && side <= 'H' {
+                } else if ('A'..='H').contains(&side) {
                     let file = side.to_digit(18).unwrap() - 10;
                     rsq = Square::make(file, relative_rank(color, RANK_1));
                 } else {
@@ -551,14 +551,14 @@ impl Position {
         let enpassant = iter.next().unwrap();
         self.st_mut().ep_square = Square::NONE;
         if enpassant != "-" {
-            let file = enpassant.chars().nth(0).unwrap();
+            let file = enpassant.chars().next().unwrap();
             let file = file.to_digit(18).unwrap() - 10;
             let rank = if self.side_to_move == WHITE { 5 } else { 2 };
             let ep_sq = Square::make(file, rank);
             if self.attackers_to(ep_sq)
-                    & self.pieces_cp(self.side_to_move, PAWN) != 0
+                & self.pieces_cp(self.side_to_move, PAWN) != 0
                 && self.pieces_cp(!self.side_to_move, PAWN)
-                    & (ep_sq + pawn_push(!self.side_to_move)) != 0
+                & (ep_sq + pawn_push(!self.side_to_move)) != 0
             {
                 self.st_mut().ep_square = ep_sq;
             }
@@ -594,8 +594,7 @@ impl Position {
 
     fn set_castling_right(&mut self, c: Color, rfrom: Square) {
         let kfrom = self.square(c, KING);
-        let cs = if kfrom < rfrom { CastlingSide::KING }
-            else { CastlingSide::QUEEN };
+        let cs = if kfrom < rfrom { CastlingSide::KING } else { CastlingSide::QUEEN };
         let cr = c | cs;
 
         self.st_mut().castling_rights |= cr;
@@ -604,9 +603,9 @@ impl Position {
         self.castling_rook_square[cr.0 as usize] = rfrom;
 
         let kto = relative_square(c,
-            if cs == CastlingSide::KING { Square::G1 } else { Square::C1 });
+                                  if cs == CastlingSide::KING { Square::G1 } else { Square::C1 });
         let rto = relative_square(c,
-            if cs == CastlingSide::KING { Square::F1 } else { Square::D1 });
+                                  if cs == CastlingSide::KING { Square::F1 } else { Square::D1 });
 
         let mut s = std::cmp::min(rfrom, rto);
         while s <= std::cmp::max(rfrom, rto) {
@@ -631,11 +630,11 @@ impl Position {
         let mut pinners = Bitboard(0);
         self.st_mut().blockers_for_king[WHITE.0 as usize] =
             self.slider_blockers(self.pieces_c(BLACK),
-                self.square(WHITE, KING), &mut pinners);
+                                 self.square(WHITE, KING), &mut pinners);
         self.st_mut().pinners_for_king[WHITE.0 as usize] = pinners;
         self.st_mut().blockers_for_king[BLACK.0 as usize] =
             self.slider_blockers(self.pieces_c(WHITE),
-                self.square(BLACK, KING), &mut pinners);
+                                 self.square(BLACK, KING), &mut pinners);
         self.st_mut().pinners_for_king[BLACK.0 as usize] = pinners;
 
         let ksq = self.square(!self.side_to_move(), KING);
@@ -645,12 +644,12 @@ impl Position {
         self.st_mut().check_squares[KNIGHT.0 as usize] =
             self.attacks_from(KNIGHT, ksq);
         self.st_mut().check_squares[BISHOP.0 as usize] =
-        self.attacks_from(BISHOP, ksq);
+            self.attacks_from(BISHOP, ksq);
         self.st_mut().check_squares[ROOK.0 as usize] =
             self.attacks_from(ROOK, ksq);
         self.st_mut().check_squares[QUEEN.0 as usize] =
             self.st().check_squares[BISHOP.0 as usize]
-            | self.st().check_squares[ROOK.0 as usize];
+                | self.st().check_squares[ROOK.0 as usize];
         self.st_mut().check_squares[KING.0 as usize] = Bitboard(0);
     }
 
@@ -668,7 +667,7 @@ impl Position {
         self.st_mut().psq = Score::ZERO;
         self.st_mut().checkers_bb =
             self.attackers_to(self.square(self.side_to_move, KING))
-            & self.pieces_c(!self.side_to_move);
+                & self.pieces_c(!self.side_to_move);
 
         self.set_check_info();
 
@@ -797,7 +796,7 @@ impl Position {
     // color of the slider.
 
     pub fn slider_blockers(
-        &self, sliders: Bitboard, s: Square, pinners: &mut Bitboard
+        &self, sliders: Bitboard, s: Square, pinners: &mut Bitboard,
     ) -> Bitboard {
         let mut blockers = Bitboard(0);
         *pinners = Bitboard(0);
@@ -806,7 +805,7 @@ impl Position {
         let snipers =
             ((pseudo_attacks(ROOK, s) & self.pieces_pp(QUEEN, ROOK))
                 | (pseudo_attacks(BISHOP, s) & self.pieces_pp(QUEEN, BISHOP)))
-            & sliders;
+                & sliders;
 
         for sniper_sq in snipers {
             let b = between_bb(s, sniper_sq) & self.pieces();
@@ -851,7 +850,7 @@ impl Position {
             return
                 attacks_bb(ROOK, ksq, occupied)
                     & self.pieces_cpp(!us, QUEEN, ROOK) == 0
-                && attacks_bb(BISHOP, ksq, occupied)
+                    && attacks_bb(BISHOP, ksq, occupied)
                     & self.pieces_cpp(!us, QUEEN, BISHOP) == 0;
         }
 
@@ -866,7 +865,7 @@ impl Position {
         // A non-king move is legal if and only if it is not pinned or it
         // is moving along the ray towards or away from the king.
         self.blockers_for_king(us) & from == 0
-        || aligned(from, m.to(), self.square(us, KING))
+            || aligned(from, m.to(), self.square(us, KING))
     }
 
     // pseudo_legal() takes a random move and tests whether the move is
@@ -910,10 +909,10 @@ impl Position {
 
             if self.attacks_from_pawn(from, us) & self.pieces_c(!us) & to == 0
                 && !((from + pawn_push(us) == to) && self.empty(to))
-                && !(  from + 2 * pawn_push(us) == to
-                    && from.rank() == relative_rank(us, RANK_2)
-                    && self.empty(to)
-                    && self.empty(to - pawn_push(us)))
+                && !(from + 2 * pawn_push(us) == to
+                && from.rank() == relative_rank(us, RANK_2)
+                && self.empty(to)
+                && self.empty(to - pawn_push(us)))
             {
                 return false;
             }
@@ -975,12 +974,11 @@ impl Position {
         }
 
         match m.move_type() {
-
             NORMAL => false,
 
             PROMOTION => {
                 attacks_bb(m.promotion_type(), to, self.pieces() ^ from)
-                & self.square(!self.side_to_move(), KING) != 0
+                    & self.square(!self.side_to_move(), KING) != 0
             }
 
             // En passant capture with check? We have already handled the
@@ -993,9 +991,9 @@ impl Position {
 
                 (attacks_bb(ROOK, self.square(!self.side_to_move(), KING), b)
                     & self.pieces_cpp(self.side_to_move(), QUEEN, ROOK))
-                | (attacks_bb(BISHOP,
-                              self.square(!self.side_to_move(), KING),
-                              b)
+                    | (attacks_bb(BISHOP,
+                                  self.square(!self.side_to_move(), KING),
+                                  b)
                     & self.pieces_cpp(self.side_to_move(), QUEEN, BISHOP)) != 0
             }
 
@@ -1003,14 +1001,14 @@ impl Position {
                 let kfrom = from;
                 let rfrom = to; // Castling is encoded as king captures rook
                 let kto = relative_square(self.side_to_move(),
-                    if rfrom > kfrom { Square::G1 } else { Square::C1 });
+                                          if rfrom > kfrom { Square::G1 } else { Square::C1 });
                 let rto = relative_square(self.side_to_move(),
-                    if rfrom > kfrom { Square::F1 } else { Square::D1 });
+                                          if rfrom > kfrom { Square::F1 } else { Square::D1 });
 
                 (pseudo_attacks(ROOK, rto)
                     & self.square(!self.side_to_move(), KING)) != 0
-                && (attacks_bb(ROOK, rto,
-                        (self.pieces() ^ kfrom ^ rfrom) | rto | kto)
+                    && (attacks_bb(ROOK, rto,
+                                   (self.pieces() ^ kfrom ^ rfrom) | rto | kto)
                     & self.square(!self.side_to_move(), KING)) != 0
             }
 
@@ -1058,7 +1056,7 @@ impl Position {
         debug_assert!(pc.color() == us);
         debug_assert!(captured == NO_PIECE
             || captured.color() ==
-                if m.move_type() != CASTLING { them } else { us }
+            if m.move_type() != CASTLING { them } else { us }
         );
 
         if m.move_type() == CASTLING {
@@ -1108,7 +1106,7 @@ impl Position {
             k ^= zobrist::psq(captured, capsq);
             {
                 let tmp = zobrist::material(captured,
-                    self.piece_count[captured.0 as usize]);
+                                            self.piece_count[captured.0 as usize]);
                 self.st_mut().material_key ^= tmp;
             }
             // prefetch
@@ -1132,7 +1130,7 @@ impl Position {
         // Update castling rights if needed
         if self.st_mut().castling_rights != 0
             && self.castling_rights_mask[from.0 as usize]
-                | self.castling_rights_mask[to.0 as usize] != 0
+            | self.castling_rights_mask[to.0 as usize] != 0
         {
             let cr = self.castling_rights_mask[from.0 as usize]
                 | self.castling_rights_mask[to.0 as usize];
@@ -1150,7 +1148,7 @@ impl Position {
             // Set en-passant square if the moved pawn can be captured
             if to.0 ^ from.0 == 16
                 && self.attacks_from_pawn(to - pawn_push(us), us)
-                    & self.pieces_cp(them, PAWN) != 0
+                & self.pieces_cp(them, PAWN) != 0
             {
                 self.st_mut().ep_square = to - pawn_push(us);
                 k ^= zobrist::enpassant(self.st().ep_square.file());
@@ -1158,7 +1156,7 @@ impl Position {
                 let promotion = Piece::make(us, m.promotion_type());
 
                 debug_assert!(to.relative_rank(us) == RANK_8);
-                debug_assert!( promotion.piece_type() >= KNIGHT
+                debug_assert!(promotion.piece_type() >= KNIGHT
                     && promotion.piece_type() <= QUEEN);
 
                 self.remove_piece(pc, to);
@@ -1169,9 +1167,9 @@ impl Position {
                 self.st_mut().pawn_key ^= zobrist::psq(pc, to);
                 {
                     let tmp = zobrist::material(promotion,
-                            self.piece_count[promotion.0 as usize] - 1)
+                                                self.piece_count[promotion.0 as usize] - 1)
                         ^ zobrist::material(pc,
-                            self.piece_count[pc.0 as usize]);
+                                            self.piece_count[pc.0 as usize]);
                     self.st_mut().material_key ^= tmp;
                 }
 
@@ -1288,22 +1286,22 @@ impl Position {
         let king_side = *to > from;
         *rfrom = *to; // Castling is encoded as king captures rook
         *rto = relative_square(us,
-            if king_side { Square::F1 } else { Square::D1 });
+                               if king_side { Square::F1 } else { Square::D1 });
         *to = relative_square(us,
-            if king_side { Square::G1 } else { Square::C1 });
+                              if king_side { Square::G1 } else { Square::C1 });
 
         // Remove both pieces first since squares could overlap in Chess960
         self.remove_piece(Piece::make(us, KING),
-            if Do::BOOL { from } else { *to });
+                          if Do::BOOL { from } else { *to });
         self.remove_piece(Piece::make(us, ROOK),
-            if Do::BOOL { *rfrom } else { *rto });
+                          if Do::BOOL { *rfrom } else { *rto });
         self.board[(if Do::BOOL { from } else { *to }).0 as usize] = NO_PIECE;
         self.board[(if Do::BOOL { *rfrom } else { *rto }).0 as usize] =
             NO_PIECE;
         self.put_piece(Piece::make(us, KING),
-            if Do::BOOL { *to } else { from });
+                       if Do::BOOL { *to } else { from });
         self.put_piece(Piece::make(us, ROOK),
-            if Do::BOOL { *rto } else { *rfrom });
+                       if Do::BOOL { *rto } else { *rfrom });
     }
 
     // do(undo)_null_move() is used to do(undo) a "null move": it flips the
@@ -1346,7 +1344,7 @@ impl Position {
     // for specualtive prefetch. It does not recognize special moves like
     // castling, en-passant and promotions.
 
-#[allow(dead_code)]
+    #[allow(dead_code)]
     fn key_after(&self, m: Move) -> Key {
         let from = m.from();
         let to = m.to();
@@ -1465,14 +1463,14 @@ impl Position {
                 attackers |=
                     (attacks_bb(BISHOP, to, occ)
                         & self.pieces_pp(BISHOP, QUEEN))
-                    | (attacks_bb(ROOK, to, occ) & self.pieces_pp(ROOK, QUEEN));
+                        | (attacks_bb(ROOK, to, occ) & self.pieces_pp(ROOK, QUEEN));
                 continue;
             }
-            if attackers & !self.pieces_c(stm) != 0 {
-                return res == Value::ZERO;
+            return if attackers & !self.pieces_c(stm) != 0 {
+                res == Value::ZERO
             } else {
-                return res != Value::ZERO;
-            }
+                res != Value::ZERO
+            };
         }
         res != Value::ZERO
     }
@@ -1483,7 +1481,7 @@ impl Position {
     pub fn is_draw(&self, ply: i32) -> bool {
         if self.st().rule50 > 99
             && (self.checkers() == 0
-                || MoveList::new::<Legal>(&self).len() != 0)
+            || MoveList::new::<Legal>(self).len() != 0)
         {
             return true;
         }
@@ -1522,7 +1520,7 @@ impl Position {
         loop {
             let mut i = 4;
             let e = std::cmp::min(self.states[l].rule50,
-                self.states[l].plies_from_null);
+                                  self.states[l].plies_from_null);
 
             if e < i {
                 return false;
@@ -1591,8 +1589,8 @@ impl Position {
             || self.piece_on(self.square(WHITE, KING)) != W_KING
             || self.piece_on(self.square(BLACK, KING)) != B_KING
             || (self.ep_square() != Square::NONE
-                && self.ep_square().relative_rank(self.side_to_move())
-                    != RANK_6)
+            && self.ep_square().relative_rank(self.side_to_move())
+            != RANK_6)
         {
             panic!("pos: Default");
         }
@@ -1600,7 +1598,7 @@ impl Position {
         if self.count(WHITE, KING) != 1
             || self.count(BLACK, KING) != 1
             || self.attackers_to(self.square(!self.side_to_move(), KING))
-                & self.pieces_c(self.side_to_move()) != 0
+            & self.pieces_c(self.side_to_move()) != 0
         {
             panic!("pos_is_ok: Kings");
         }
@@ -1616,7 +1614,7 @@ impl Position {
             for p2 in 1..6 {
                 if p1 != p2
                     && self.pieces_p(PieceType(p1))
-                        & self.pieces_p(PieceType(p2)) != 0
+                    & self.pieces_p(PieceType(p2)) != 0
                 {
                     panic!("pos_is_ok: Bitboards");
                 }
@@ -1636,11 +1634,11 @@ impl Position {
 
             for i in 0..self.piece_count[pc.0 as usize] {
                 if self.board
-                        [self.piece_list[pc.0 as usize][i as usize].0 as usize]
-                        != pc
+                    [self.piece_list[pc.0 as usize][i as usize].0 as usize]
+                    != pc
                     || self.index
-                        [self.piece_list[pc.0 as usize][i as usize].0 as usize]
-                        != i
+                    [self.piece_list[pc.0 as usize][i as usize].0 as usize]
+                    != i
                 {
                     panic!("pos_is_ok: Index {}, {}", p, i);
                 }

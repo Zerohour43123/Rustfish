@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+use std;
+
 use tb;
 use threads;
 use tt;
-
-use std;
 
 type OnChange = Option<fn(&OptVal)>;
 
@@ -17,9 +17,9 @@ struct Opt {
 impl Opt {
     pub fn new(key: &'static str, val: OptVal, on_change: OnChange) -> Opt {
         Opt {
-            key: key,
-            val: val,
-            on_change: on_change,
+            key,
+            val,
+            on_change,
         }
     }
 }
@@ -49,30 +49,30 @@ enum OptVal {
 impl OptVal {
     pub fn string(def: &'static str) -> OptVal {
         OptVal::StringOpt {
-            def: def,
+            def,
             cur: String::from(def),
         }
     }
 
     pub fn spin(def: i32, min: i32, max: i32) -> OptVal {
         OptVal::Spin {
-            def: def,
+            def,
             cur: def,
-            min: min,
-            max: max,
+            min,
+            max,
         }
     }
 
     pub fn check(def: bool) -> OptVal {
         OptVal::Check {
-            def: def,
+            def,
             cur: def,
         }
     }
 
     pub fn combo(def: &'static str) -> OptVal {
         OptVal::Combo {
-            def: def,
+            def,
             cur: String::from(&def[0..def.find(" var").unwrap()])
                 .to_lowercase(),
         }
@@ -105,24 +105,24 @@ static mut OPTIONS: *mut Vec<Opt> = 0 as *mut Vec<Opt>;
 
 pub fn init()
 {
-    let mut opts = Box::new(Vec::new());
+    let mut opts = Box::<Vec<Opt>>::default();
     opts.push(Opt::new("Contempt", OptVal::spin(18, -100, 100), None));
     opts.push(Opt::new("Analysis Contempt",
-        OptVal::combo("Off var Off var White var Black"), None));
+                       OptVal::combo("Off var Off var White var Black"), None));
     opts.push(Opt::new("Threads", OptVal::spin(1, 1, 512), Some(on_threads)));
     opts.push(Opt::new("Hash", OptVal::spin(16, 1, 128 * 1024),
-        Some(on_hash_size)));
+                       Some(on_hash_size)));
     opts.push(Opt::new("Clear Hash", OptVal::Button, Some(on_clear_hash)));
     opts.push(Opt::new("Ponder", OptVal::check(false), None));
     opts.push(Opt::new("MultiPV", OptVal::spin(1, 1, 500), None));
     opts.push(Opt::new("Move Overhead", OptVal::spin(30, 0, 5000), None));
     opts.push(Opt::new("Minimum Thinking Time", OptVal::spin(20, 0, 5000),
-        None));
+                       None));
     opts.push(Opt::new("Slow Mover", OptVal::spin(84, 10, 1000), None));
     opts.push(Opt::new("UCI_AnalyseMode", OptVal::check(false), None));
     opts.push(Opt::new("UCI_Chess960", OptVal::check(false), None));
     opts.push(Opt::new("SyzygyPath", OptVal::string("<empty>"),
-        Some(on_tb_path)));
+                       Some(on_tb_path)));
     opts.push(Opt::new("SyzygyProbeDepth", OptVal::spin(1, 1, 100), None));
     opts.push(Opt::new("Syzygy50MoveRule", OptVal::check(true), None));
     opts.push(Opt::new("SyzygyProbeLimit", OptVal::spin(6, 0, 6), None));
@@ -145,23 +145,23 @@ pub fn print() {
             OptVal::Spin { def, min, max, .. } =>
                 format!("spin default {} min {} max {}", def, min, max),
             OptVal::Check { def, .. } =>
-                format!("check default {}", if def { true } else { false }),
-            OptVal::Button => format!("button"),
+                format!("check default {}", def),
+            OptVal::Button => "button".to_string(),
             OptVal::Combo { def, .. } => format!("combo default {}", def),
         });
     }
-    print!("\n");
+    println!();
     std::mem::forget(opts);
 }
 
 pub fn set(key: &str, val: &str) {
     let mut opts = unsafe { Box::from_raw(OPTIONS) };
-    if let Some(opt) = opts.iter_mut().find(|ref o| o.key == key) {
+    if let Some(opt) = opts.iter_mut().find(|o| o.key == key) {
         match opt.val {
             OptVal::StringOpt { ref mut cur, .. } => *cur = String::from(val),
             OptVal::Spin { ref mut cur, .. } => *cur = val.parse().unwrap(),
             OptVal::Check { ref mut cur, .. } => *cur = val == "true",
-            OptVal::Button => {},
+            OptVal::Button => {}
             OptVal::Combo { ref mut cur, .. } =>
                 *cur = String::from(val).to_lowercase(),
         }
@@ -179,7 +179,7 @@ pub fn set(key: &str, val: &str) {
 pub fn get_i32(key: &str) -> i32 {
     let opts = unsafe { Box::from_raw(OPTIONS) };
     let val = {
-        let opt = opts.iter().find(|ref o| o.key == key).unwrap();
+        let opt = opts.iter().find(|o| o.key == key).unwrap();
         if let OptVal::Spin { cur, .. } = opt.val { cur } else { 0 }
     };
     std::mem::forget(opts);
@@ -189,7 +189,7 @@ pub fn get_i32(key: &str) -> i32 {
 pub fn get_bool(key: &str) -> bool {
     let opts = unsafe { Box::from_raw(OPTIONS) };
     let val = {
-        let opt = opts.iter().find(|ref o| o.key == key).unwrap();
+        let opt = opts.iter().find(|o| o.key == key).unwrap();
         if let OptVal::Check { cur, .. } = opt.val { cur } else { false }
     };
     std::mem::forget(opts);
@@ -199,10 +199,10 @@ pub fn get_bool(key: &str) -> bool {
 pub fn get_string(key: &str) -> String {
     let opts = unsafe { Box::from_raw(OPTIONS) };
     let val = {
-        let opt = opts.iter().find(|ref o| o.key == key).unwrap();
-        if let OptVal::StringOpt { ref cur, ..} = opt.val {
+        let opt = opts.iter().find(|o| o.key == key).unwrap();
+        if let OptVal::StringOpt { ref cur, .. } = opt.val {
             String::from(cur.as_str())
-        } else if let OptVal::Combo { ref cur, ..} = opt.val {
+        } else if let OptVal::Combo { ref cur, .. } = opt.val {
             String::from(cur.as_str())
         } else {
             String::new()
