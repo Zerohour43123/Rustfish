@@ -6,36 +6,33 @@ use bitboard::*;
 use position::Position;
 use types::*;
 
-macro_rules! v { ($x:expr) => (Value($x)) }
-macro_rules! s { ($x:expr, $y:expr) => (Score(($y << 16) + $x)) }
-
 const V0: Value = Value::ZERO;
 
 // Isolated pawn penalty
-const ISOLATED: Score = s!(13, 18);
+const ISOLATED: Score = Score::new(13, 18);
 
 // Backward pawn penalty
-const BACKWARD: Score = s!(24, 12);
+const BACKWARD: Score = Score::new(24, 12);
 
 // Connected pawn bonus by opposed, phalanx, #support and rank
 static mut CONNECTED: [[[[Score; 8]; 3]; 2]; 2] =
     [[[[Score::ZERO; 8]; 3]; 2]; 2];
 
 // Doubled pawn penalty
-const DOUBLED: Score = s!(18, 38);
+const DOUBLED: Score = Score::new(18, 38);
 
 // Weakness of our pawn shelter in front of the king by
 // [is_king_file][distance from edge][rank]. RANK_1 = 0 is used for files
 // where we have no pawns or our pawn is behind our king.
 const SHELTER_WEAKNESS: [[[Value; 8]; 4]; 2] = [
-    [[v!( 98), v!(20), v!(11), v!(42), v!( 83), v!( 84), v!(101), V0],
-        [v!(103), v!( 8), v!(33), v!(86), v!( 87), v!(105), v!(113), V0],
-        [v!(100), v!( 2), v!(65), v!(95), v!( 59), v!( 89), v!(115), V0],
-        [v!( 72), v!( 6), v!(52), v!(74), v!( 83), v!( 84), v!(112), V0]],
-    [[v!(105), v!(19), v!( 3), v!(27), v!( 85), v!( 93), v!( 84), V0],
-        [v!(121), v!( 7), v!(33), v!(95), v!(112), v!( 86), v!( 72), V0],
-        [v!(121), v!(26), v!(65), v!(90), v!( 65), v!( 76), v!(117), V0],
-        [v!( 79), v!( 0), v!(45), v!(65), v!( 94), v!( 92), v!(105), V0]],
+    [[Value::new(98), Value::new(20), Value::new(11), Value::new(42), Value::new(83), Value::new(84), Value::new(101), V0],
+        [Value::new(103), Value::new(8), Value::new(33), Value::new(86), Value::new(87), Value::new(105), Value::new(113), V0],
+        [Value::new(100), Value::new(2), Value::new(65), Value::new(95), Value::new(59), Value::new(89), Value::new(115), V0],
+        [Value::new(72), Value::new(6), Value::new(52), Value::new(74), Value::new(83), Value::new(84), Value::new(112), V0]],
+    [[Value::new(105), Value::new(19), Value::new(3), Value::new(27), Value::new(85), Value::new(93), Value::new(84), V0],
+        [Value::new(121), Value::new(7), Value::new(33), Value::new(95), Value::new(112), Value::new(86), Value::new(72), V0],
+        [Value::new(121), Value::new(26), Value::new(65), Value::new(90), Value::new(65), Value::new(76), Value::new(117), V0],
+        [Value::new(79), Value::new(0), Value::new(45), Value::new(65), Value::new(94), Value::new(92), Value::new(105), V0]],
 ];
 
 // Danger of enemy pawns moving toward our king by
@@ -44,30 +41,30 @@ const SHELTER_WEAKNESS: [[[Value; 8]; 4]; 2] = [
 // pawn is behind our king.
 const STORM_DANGER: [[[Value; 8]; 4]; 4] = [
     // BlockedByKing
-    [[v!( 0), v!(-290), v!(-274), v!(57), v!(41), V0, V0, V0],
-        [v!( 0), v!(  60), v!( 144), v!(39), v!(13), V0, V0, V0],
-        [v!( 0), v!(  65), v!( 141), v!(41), v!(34), V0, V0, V0],
-        [v!( 0), v!(  53), v!( 127), v!(56), v!(14), V0, V0, V0]],
+    [[Value::new(0), Value::new(-290), Value::new(-274), Value::new(57), Value::new(41), V0, V0, V0],
+        [Value::new(0), Value::new(60), Value::new(144), Value::new(39), Value::new(13), V0, V0, V0],
+        [Value::new(0), Value::new(65), Value::new(141), Value::new(41), Value::new(34), V0, V0, V0],
+        [Value::new(0), Value::new(53), Value::new(127), Value::new(56), Value::new(14), V0, V0, V0]],
     // Unopposed
-    [[v!( 4), v!(  73), v!( 132), v!(46), v!(31), V0, V0, V0],
-        [v!( 1), v!(  64), v!( 143), v!(26), v!(13), V0, V0, V0],
-        [v!( 1), v!(  47), v!( 110), v!(44), v!(24), V0, V0, V0],
-        [v!( 0), v!(  72), v!( 127), v!(50), v!(31), V0, V0, V0]],
+    [[Value::new(4), Value::new(73), Value::new(132), Value::new(46), Value::new(31), V0, V0, V0],
+        [Value::new(1), Value::new(64), Value::new(143), Value::new(26), Value::new(13), V0, V0, V0],
+        [Value::new(1), Value::new(47), Value::new(110), Value::new(44), Value::new(24), V0, V0, V0],
+        [Value::new(0), Value::new(72), Value::new(127), Value::new(50), Value::new(31), V0, V0, V0]],
     // BlockedByPawn
-    [[v!( 0), v!(   0), v!(  79), v!(23), v!( 1), V0, V0, V0],
-        [v!( 0), v!(   0), v!( 148), v!(27), v!( 2), V0, V0, V0],
-        [v!( 0), v!(   0), v!( 161), v!(16), v!( 1), V0, V0, V0],
-        [v!( 0), v!(   0), v!( 171), v!(22), v!(15), V0, V0, V0]],
+    [[Value::new(0), Value::new(0), Value::new(79), Value::new(23), Value::new(1), V0, V0, V0],
+        [Value::new(0), Value::new(0), Value::new(148), Value::new(27), Value::new(2), V0, V0, V0],
+        [Value::new(0), Value::new(0), Value::new(161), Value::new(16), Value::new(1), V0, V0, V0],
+        [Value::new(0), Value::new(0), Value::new(171), Value::new(22), Value::new(15), V0, V0, V0]],
     // Unblocked
-    [[v!(22), v!(  45), v!( 104), v!(62), v!( 6), V0, V0, V0],
-        [v!(31), v!(  30), v!(  99), v!(39), v!(19), V0, V0, V0],
-        [v!(23), v!(  29), v!(  96), v!(41), v!(15), V0, V0, V0],
-        [v!(21), v!(  23), v!( 116), v!(41), v!(15), V0, V0, V0]],
+    [[Value::new(22), Value::new(45), Value::new(104), Value::new(62), Value::new(6), V0, V0, V0],
+        [Value::new(31), Value::new(30), Value::new(99), Value::new(39), Value::new(19), V0, V0, V0],
+        [Value::new(23), Value::new(29), Value::new(96), Value::new(41), Value::new(15), V0, V0, V0],
+        [Value::new(21), Value::new(23), Value::new(116), Value::new(41), Value::new(15), V0, V0, V0]],
 ];
 
 // Max bonus for king safety. Corresponds to start position with all the
 // pawns in front of the king and no enemy pawns on the horizon.
-const MAX_SAFETY_BONUS: Value = v!(258);
+const MAX_SAFETY_BONUS: Value = Value::new(258);
 
 // pawns::Entry contains various information about a pawn structure. A lookup
 // in the pawn hash table (performed by calling the probing function) returns
@@ -165,7 +162,11 @@ impl Entry {
     ) -> Value {
         let us = Us::COLOR;
         let them = if us == WHITE { BLACK } else { WHITE };
-        let shelter_mask = if us == WHITE { bitboard!(A2, B3, C2, F2, G3, H2) } else { bitboard!(A7, B6, C7, F7, G6, H7) };
+        let shelter_mask = if us == WHITE {
+            bitboard!(A2, B3, C2, F2, G3, H2)
+        } else {
+            bitboard!(A7, B6, C7, F7, G6, H7)
+        };
         let storm_mask = if us == WHITE { bitboard!(A3, C3, F3, H3) } else { bitboard!(A6, C6, F6, H6) };
 
         const BLOCKED_BY_KING: usize = 0;
@@ -173,7 +174,7 @@ impl Entry {
         const BLOCKED_BY_PAWN: usize = 2;
         const UNBLOCKED: usize = 3;
 
-        let center = std::cmp::max(FILE_B, std::cmp::min(FILE_G, ksq.file()));
+        let center = ksq.file().clamp(FILE_B, FILE_G);
         let b = pos.pieces_p(PAWN)
             & (forward_ranks_bb(us, ksq) | ksq.rank_bb())
             & (adjacent_files_bb(center) | file_bb(center));
@@ -197,7 +198,7 @@ impl Entry {
                 [d as usize][rk_them as usize];
         }
 
-        if popcount((our_pawns & shelter_mask)
+        if Bitboard::pop_count((our_pawns & shelter_mask)
             | (their_pawns & storm_mask)) == 5
         {
             safety += 300;
@@ -239,7 +240,7 @@ impl Entry {
                                   self.shelter_storm::<Us>(pos, Square::C1.relative(us)));
         }
 
-        Score::make(bonus.0, -16 * min_king_pawn_distance)
+        Score::new(bonus.0, -16 * min_king_pawn_distance)
     }
 }
 
@@ -259,7 +260,7 @@ pub fn init() {
                     unsafe {
                         CONNECTED[opposed as usize][phalanx as usize]
                             [support as usize][r as usize] =
-                            Score::make(v, v * (r - 2) / 4);
+                            Score::new(v, v * (r - 2) / 4);
                     }
                 }
             }
@@ -273,7 +274,7 @@ pub fn init() {
 pub fn probe(pos: &Position) -> &mut Entry {
     let key = pos.pawn_key();
     let e = pos.pawns_table[(key.0 & 16383) as usize].get();
-    let e: &'static mut Entry = unsafe { &mut *e };
+    let e: &mut Entry = unsafe { e.as_mut().unwrap_unchecked() };
 
     if e.key == key {
         return e;
@@ -311,9 +312,9 @@ fn evaluate<Us: ColorTrait>(pos: &Position, e: &mut Entry) -> Score {
     e.pawn_attacks[us.0 as usize] =
         our_pawns.shift(right) | our_pawns.shift(left);
     e.pawns_on_squares[us.0 as usize][BLACK.0 as usize] =
-        popcount(our_pawns & DARK_SQUARES) as i32;
+        Bitboard::pop_count(our_pawns & DARK_SQUARES) as i32;
     e.pawns_on_squares[us.0 as usize][WHITE.0 as usize] =
-        popcount(our_pawns & !DARK_SQUARES) as i32;
+        Bitboard::pop_count(our_pawns & !DARK_SQUARES) as i32;
 
     // Loop through all pawns of the current color and score each pawn
     for s in pos.square_list(us, PAWN) {
@@ -360,8 +361,8 @@ fn evaluate<Us: ColorTrait>(pos: &Position, e: &mut Entry) -> Score {
         // which could become passed after one or two pawn pushes.
         if stoppers ^ lever ^ lever_push == 0
             && our_pawns & forward_file_bb(us, s) == 0
-            && popcount(supported) >= popcount(lever)
-            && popcount(phalanx) >= popcount(lever_push)
+            && Bitboard::pop_count(supported) >= Bitboard::pop_count(lever)
+            && Bitboard::pop_count(phalanx) >= Bitboard::pop_count(lever_push)
         {
             e.passed_pawns[us.0 as usize] |= s;
         } else if stoppers ^ (s + up) == 0
@@ -378,7 +379,7 @@ fn evaluate<Us: ColorTrait>(pos: &Position, e: &mut Entry) -> Score {
         if supported | phalanx != 0 {
             score += unsafe {
                 CONNECTED[(opposed != 0) as usize][(phalanx != 0) as usize]
-                    [popcount(supported) as usize][s.relative_rank(us) as usize]
+                    [Bitboard::pop_count(supported) as usize][s.relative_rank(us) as usize]
             };
         } else if neighbours == 0 {
             score -= ISOLATED;

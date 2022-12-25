@@ -395,7 +395,7 @@ pub fn thread_search(pos: &mut Position, _th: &threads::ThreadCtrl) {
     }
 
     unsafe {
-        let contempt = Score::make(base_ct, base_ct / 2);
+        let contempt = Score::new(base_ct, base_ct / 2);
         evaluate::CONTEMPT = if us == WHITE { contempt } else { -contempt };
     }
 
@@ -483,7 +483,7 @@ pub fn thread_search(pos: &mut Position, _th: &threads::ThreadCtrl) {
                     pos.root_moves[pos.pv_idx].previous_score + delta,
                     Value::INFINITE);
                 let ct = base_ct + (if best_value > Value(500) { 50 } else if best_value < Value(-500) { -50 } else { best_value.0 / 10 });
-                let ct = Score::make(ct, ct / 2);
+                let ct = Score::new(ct, ct / 2);
                 unsafe {
                     evaluate::CONTEMPT = if us == WHITE { ct } else { -ct }
                 }
@@ -585,9 +585,7 @@ pub fn thread_search(pos: &mut Position, _th: &threads::ThreadCtrl) {
             // if all of the available time has been used.
             let f = [pos.failed_low as i32,
                 (best_value - pos.previous_score).0];
-            let improving_factor = std::cmp::max(246,
-                                                 std::cmp::min(832, 306 + 119 * f[0] - 6 * f[1]));
-
+            let improving_factor = (306 + 119 * f[0] - 6 * f[1]).clamp(246, 832);
             let mut unstable_pv_factor = 1. + pos.best_move_changes;
 
             // if the best_move is stable over several iterations, reduce
@@ -743,7 +741,7 @@ fn search<NT: NodeType>(
 
     // Step 5. Tablebase probe
     if !root_node && tb::cardinality() != 0 {
-        let pieces_cnt = popcount(pos.pieces());
+        let pieces_cnt = Bitboard::pop_count(pos.pieces());
 
         if pieces_cnt <= tb::cardinality()
             && (pieces_cnt < tb::cardinality() || depth >= tb::probe_depth())
@@ -1411,7 +1409,7 @@ fn search<NT: NodeType>(
     debug_assert!(best_value > -Value::INFINITE
         && best_value < Value::INFINITE);
 
-    return best_value;
+    best_value
 }
 
 // qsearch() is the quiescence search function, which is called by the main
@@ -1634,8 +1632,7 @@ fn qsearch<NT: NodeType, InCheck: Bool>(
 
     debug_assert!(
         best_value > -Value::INFINITE && best_value < Value::INFINITE);
-
-    return best_value;
+    best_value
 }
 
 // value_to_tt() adjusts a mate score from "plies to mate from the root" to
@@ -1849,5 +1846,5 @@ fn extract_ponder_from_tt(pos: &mut Position) -> bool {
     }
 
     pos.undo_move(m1);
-    return pos.root_moves[0].pv.len() > 1;
+    pos.root_moves[0].pv.len() > 1
 }

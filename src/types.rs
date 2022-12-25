@@ -695,6 +695,10 @@ impl Value {
     pub fn abs(self) -> Value {
         Value(self.0.abs())
     }
+
+    pub const fn new(value: i32) -> Self {
+        Self(value)
+    }
 }
 
 #[allow(non_upper_case_globals)]
@@ -828,7 +832,7 @@ impl Score {
         Value((self.0 as i16) as i32)
     }
 
-    pub fn make(mg: i32, eg: i32) -> Self {
+    pub const fn new(mg: i32, eg: i32) -> Self {
         Score((eg << 16) + mg)
     }
 }
@@ -859,7 +863,7 @@ impl std::ops::Neg for Score {
 impl std::ops::Mul<i32> for Score {
     type Output = Self;
     fn mul(self, rhs: i32) -> Self {
-        Score::make(rhs * self.mg().0, rhs * self.eg().0)
+        Score::new(rhs * self.mg().0, rhs * self.eg().0)
     }
 }
 

@@ -454,7 +454,7 @@ impl Position {
         println!("\nFen: {}\nKey: {}\nCheckers: {}", self.fen(), self.key(),
                  self.checkers());
 
-        if tb::max_cardinality() >= popcount(self.pieces())
+        if tb::max_cardinality() >= Bitboard::pop_count(self.pieces())
             && !self.has_castling_right(ANY_CASTLING)
         {
             let mut s1 = 1;
@@ -1627,7 +1627,7 @@ impl Position {
             }
             let pc = Piece(p);
             if self.piece_count[pc.0 as usize] !=
-                popcount(self.pieces_cp(pc.color(), pc.piece_type())) as i32
+                Bitboard::pop_count(self.pieces_cp(pc.color(), pc.piece_type())) as i32
             {
                 panic!("pos_is_ok: Pieces {}", p);
             }

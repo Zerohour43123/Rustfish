@@ -10,8 +10,35 @@ use uci;
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Bitboard(pub u64);
 
-pub fn popcount(bb: Bitboard) -> u32 {
-    bb.0.count_ones()
+
+// bitboard!(A1, A2, ...) creates a bitboard with squares A1, A2, ...
+
+macro_rules! bitboard {
+    () => { Bitboard(0) };
+    ($sq:ident) => { bitboard!() | Square::$sq };
+    ($sq:ident, $($sqs:ident),+) => { bitboard!($($sqs),*) | Square::$sq };
+}
+
+
+// shift() moves a bitboard one step along direction D. Mainly for pawns.
+
+impl Bitboard {
+    pub fn shift(self, direction: Direction) -> Self {
+        match direction {
+            NORTH => self << 8,
+            SOUTH => self >> 8,
+            NORTH_EAST => (self & !FILEH_BB) << 9,
+            SOUTH_EAST => (self & !FILEH_BB) >> 7,
+            NORTH_WEST => (self & !FILEA_BB) << 7,
+            SOUTH_WEST => (self & !FILEA_BB) >> 9,
+            _ => Bitboard(0)
+        }
+    }
+
+    pub fn pop_count(self) -> u32 {
+        self.0.count_ones()
+    }
+
 }
 
 pub const ALL_SQUARES: Bitboard = Bitboard(!0u64);
@@ -76,140 +103,147 @@ struct MagicInit {
     index: u32,
 }
 
-macro_rules! m { ($x:expr, $y:expr) => { MagicInit { magic: $x, index: $y } } }
+impl MagicInit {
+    pub const fn new(magic: u64, index: u32) -> Self {
+        Self {
+            magic,
+            index,
+        }
+    }
+}
 
 const BISHOP_INIT: [MagicInit; 64] = [
-    m!(0x007fbfbfbfbfbfff,  5378),
-    m!(0x0000a060401007fc,  4093),
-    m!(0x0001004008020000,  4314),
-    m!(0x0000806004000000,  6587),
-    m!(0x0000100400000000,  6491),
-    m!(0x000021c100b20000,  6330),
-    m!(0x0000040041008000,  5609),
-    m!(0x00000fb0203fff80, 22236),
-    m!(0x0000040100401004,  6106),
-    m!(0x0000020080200802,  5625),
-    m!(0x0000004010202000, 16785),
-    m!(0x0000008060040000, 16817),
-    m!(0x0000004402000000,  6842),
-    m!(0x0000000801008000,  7003),
-    m!(0x000007efe0bfff80,  4197),
-    m!(0x0000000820820020,  7356),
-    m!(0x0000400080808080,  4602),
-    m!(0x00021f0100400808,  4538),
-    m!(0x00018000c06f3fff, 29531),
-    m!(0x0000258200801000, 45393),
-    m!(0x0000240080840000, 12420),
-    m!(0x000018000c03fff8, 15763),
-    m!(0x00000a5840208020,  5050),
-    m!(0x0000020008208020,  4346),
-    m!(0x0000804000810100,  6074),
-    m!(0x0001011900802008,  7866),
-    m!(0x0000804000810100, 32139),
-    m!(0x000100403c0403ff, 57673),
-    m!(0x00078402a8802000, 55365),
-    m!(0x0000101000804400, 15818),
-    m!(0x0000080800104100,  5562),
-    m!(0x00004004c0082008,  6390),
-    m!(0x0001010120008020,  7930),
-    m!(0x000080809a004010, 13329),
-    m!(0x0007fefe08810010,  7170),
-    m!(0x0003ff0f833fc080, 27267),
-    m!(0x007fe08019003042, 53787),
-    m!(0x003fffefea003000,  5097),
-    m!(0x0000101010002080,  6643),
-    m!(0x0000802005080804,  6138),
-    m!(0x0000808080a80040,  7418),
-    m!(0x0000104100200040,  7898),
-    m!(0x0003ffdf7f833fc0, 42012),
-    m!(0x0000008840450020, 57350),
-    m!(0x00007ffc80180030, 22813),
-    m!(0x007fffdd80140028, 56693),
-    m!(0x00020080200a0004,  5818),
-    m!(0x0000101010100020,  7098),
-    m!(0x0007ffdfc1805000,  4451),
-    m!(0x0003ffefe0c02200,  4709),
-    m!(0x0000000820806000,  4794),
-    m!(0x0000000008403000, 13364),
-    m!(0x0000000100202000,  4570),
-    m!(0x0000004040802000,  4282),
-    m!(0x0004010040100400, 14964),
-    m!(0x00006020601803f4,  4026),
-    m!(0x0003ffdfdfc28048,  4826),
-    m!(0x0000000820820020,  7354),
-    m!(0x0000000008208060,  4848),
-    m!(0x0000000000808020, 15946),
-    m!(0x0000000001002020, 14932),
-    m!(0x0000000401002008, 16588),
-    m!(0x0000004040404040,  6905),
-    m!(0x007fff9fdf7ff813, 16076),
+    MagicInit::new(0x007fbfbfbfbfbfff, 5378),
+    MagicInit::new(0x0000a060401007fc, 4093),
+    MagicInit::new(0x0001004008020000, 4314),
+    MagicInit::new(0x0000806004000000, 6587),
+    MagicInit::new(0x0000100400000000, 6491),
+    MagicInit::new(0x000021c100b20000, 6330),
+    MagicInit::new(0x0000040041008000, 5609),
+    MagicInit::new(0x00000fb0203fff80, 22236),
+    MagicInit::new(0x0000040100401004, 6106),
+    MagicInit::new(0x0000020080200802, 5625),
+    MagicInit::new(0x0000004010202000, 16785),
+    MagicInit::new(0x0000008060040000, 16817),
+    MagicInit::new(0x0000004402000000, 6842),
+    MagicInit::new(0x0000000801008000, 7003),
+    MagicInit::new(0x000007efe0bfff80, 4197),
+    MagicInit::new(0x0000000820820020, 7356),
+    MagicInit::new(0x0000400080808080, 4602),
+    MagicInit::new(0x00021f0100400808, 4538),
+    MagicInit::new(0x00018000c06f3fff, 29531),
+    MagicInit::new(0x0000258200801000, 45393),
+    MagicInit::new(0x0000240080840000, 12420),
+    MagicInit::new(0x000018000c03fff8, 15763),
+    MagicInit::new(0x00000a5840208020, 5050),
+    MagicInit::new(0x0000020008208020, 4346),
+    MagicInit::new(0x0000804000810100, 6074),
+    MagicInit::new(0x0001011900802008, 7866),
+    MagicInit::new(0x0000804000810100, 32139),
+    MagicInit::new(0x000100403c0403ff, 57673),
+    MagicInit::new(0x00078402a8802000, 55365),
+    MagicInit::new(0x0000101000804400, 15818),
+    MagicInit::new(0x0000080800104100, 5562),
+    MagicInit::new(0x00004004c0082008, 6390),
+    MagicInit::new(0x0001010120008020, 7930),
+    MagicInit::new(0x000080809a004010, 13329),
+    MagicInit::new(0x0007fefe08810010, 7170),
+    MagicInit::new(0x0003ff0f833fc080, 27267),
+    MagicInit::new(0x007fe08019003042, 53787),
+    MagicInit::new(0x003fffefea003000, 5097),
+    MagicInit::new(0x0000101010002080, 6643),
+    MagicInit::new(0x0000802005080804, 6138),
+    MagicInit::new(0x0000808080a80040, 7418),
+    MagicInit::new(0x0000104100200040, 7898),
+    MagicInit::new(0x0003ffdf7f833fc0, 42012),
+    MagicInit::new(0x0000008840450020, 57350),
+    MagicInit::new(0x00007ffc80180030, 22813),
+    MagicInit::new(0x007fffdd80140028, 56693),
+    MagicInit::new(0x00020080200a0004, 5818),
+    MagicInit::new(0x0000101010100020, 7098),
+    MagicInit::new(0x0007ffdfc1805000, 4451),
+    MagicInit::new(0x0003ffefe0c02200, 4709),
+    MagicInit::new(0x0000000820806000, 4794),
+    MagicInit::new(0x0000000008403000, 13364),
+    MagicInit::new(0x0000000100202000, 4570),
+    MagicInit::new(0x0000004040802000, 4282),
+    MagicInit::new(0x0004010040100400, 14964),
+    MagicInit::new(0x00006020601803f4, 4026),
+    MagicInit::new(0x0003ffdfdfc28048, 4826),
+    MagicInit::new(0x0000000820820020, 7354),
+    MagicInit::new(0x0000000008208060, 4848),
+    MagicInit::new(0x0000000000808020, 15946),
+    MagicInit::new(0x0000000001002020, 14932),
+    MagicInit::new(0x0000000401002008, 16588),
+    MagicInit::new(0x0000004040404040, 6905),
+    MagicInit::new(0x007fff9fdf7ff813, 16076),
 ];
 
 const ROOK_INIT: [MagicInit; 64] = [
-    m!(0x00280077ffebfffe, 26304),
-    m!(0x2004010201097fff, 35520),
-    m!(0x0010020010053fff, 38592),
-    m!(0x0040040008004002,  8026),
-    m!(0x7fd00441ffffd003, 22196),
-    m!(0x4020008887dffffe, 80870),
-    m!(0x004000888847ffff, 76747),
-    m!(0x006800fbff75fffd, 30400),
-    m!(0x000028010113ffff, 11115),
-    m!(0x0020040201fcffff, 18205),
-    m!(0x007fe80042ffffe8, 53577),
-    m!(0x00001800217fffe8, 62724),
-    m!(0x00001800073fffe8, 34282),
-    m!(0x00001800e05fffe8, 29196),
-    m!(0x00001800602fffe8, 23806),
-    m!(0x000030002fffffa0, 49481),
-    m!(0x00300018010bffff,  2410),
-    m!(0x0003000c0085fffb, 36498),
-    m!(0x0004000802010008, 24478),
-    m!(0x0004002020020004, 10074),
-    m!(0x0001002002002001, 79315),
-    m!(0x0001001000801040, 51779),
-    m!(0x0000004040008001, 13586),
-    m!(0x0000006800cdfff4, 19323),
-    m!(0x0040200010080010, 70612),
-    m!(0x0000080010040010, 83652),
-    m!(0x0004010008020008, 63110),
-    m!(0x0000040020200200, 34496),
-    m!(0x0002008010100100, 84966),
-    m!(0x0000008020010020, 54341),
-    m!(0x0000008020200040, 60421),
-    m!(0x0000820020004020, 86402),
-    m!(0x00fffd1800300030, 50245),
-    m!(0x007fff7fbfd40020, 76622),
-    m!(0x003fffbd00180018, 84676),
-    m!(0x001fffde80180018, 78757),
-    m!(0x000fffe0bfe80018, 37346),
-    m!(0x0001000080202001,   370),
-    m!(0x0003fffbff980180, 42182),
-    m!(0x0001fffdff9000e0, 45385),
-    m!(0x00fffefeebffd800, 61659),
-    m!(0x007ffff7ffc01400, 12790),
-    m!(0x003fffbfe4ffe800, 16762),
-    m!(0x001ffff01fc03000,     0),
-    m!(0x000fffe7f8bfe800, 38380),
-    m!(0x0007ffdfdf3ff808, 11098),
-    m!(0x0003fff85fffa804, 21803),
-    m!(0x0001fffd75ffa802, 39189),
-    m!(0x00ffffd7ffebffd8, 58628),
-    m!(0x007fff75ff7fbfd8, 44116),
-    m!(0x003fff863fbf7fd8, 78357),
-    m!(0x001fffbfdfd7ffd8, 44481),
-    m!(0x000ffff810280028, 64134),
-    m!(0x0007ffd7f7feffd8, 41759),
-    m!(0x0003fffc0c480048,  1394),
-    m!(0x0001ffffafd7ffd8, 40910),
-    m!(0x00ffffe4ffdfa3ba, 66516),
-    m!(0x007fffef7ff3d3da,  3897),
-    m!(0x003fffbfdfeff7fa,  3930),
-    m!(0x001fffeff7fbfc22, 72934),
-    m!(0x0000020408001001, 72662),
-    m!(0x0007fffeffff77fd, 56325),
-    m!(0x0003ffffbf7dfeec, 66501),
-    m!(0x0001ffff9dffa333, 14826),
+    MagicInit::new(0x00280077ffebfffe, 26304),
+    MagicInit::new(0x2004010201097fff, 35520),
+    MagicInit::new(0x0010020010053fff, 38592),
+    MagicInit::new(0x0040040008004002, 8026),
+    MagicInit::new(0x7fd00441ffffd003, 22196),
+    MagicInit::new(0x4020008887dffffe, 80870),
+    MagicInit::new(0x004000888847ffff, 76747),
+    MagicInit::new(0x006800fbff75fffd, 30400),
+    MagicInit::new(0x000028010113ffff, 11115),
+    MagicInit::new(0x0020040201fcffff, 18205),
+    MagicInit::new(0x007fe80042ffffe8, 53577),
+    MagicInit::new(0x00001800217fffe8, 62724),
+    MagicInit::new(0x00001800073fffe8, 34282),
+    MagicInit::new(0x00001800e05fffe8, 29196),
+    MagicInit::new(0x00001800602fffe8, 23806),
+    MagicInit::new(0x000030002fffffa0, 49481),
+    MagicInit::new(0x00300018010bffff, 2410),
+    MagicInit::new(0x0003000c0085fffb, 36498),
+    MagicInit::new(0x0004000802010008, 24478),
+    MagicInit::new(0x0004002020020004, 10074),
+    MagicInit::new(0x0001002002002001, 79315),
+    MagicInit::new(0x0001001000801040, 51779),
+    MagicInit::new(0x0000004040008001, 13586),
+    MagicInit::new(0x0000006800cdfff4, 19323),
+    MagicInit::new(0x0040200010080010, 70612),
+    MagicInit::new(0x0000080010040010, 83652),
+    MagicInit::new(0x0004010008020008, 63110),
+    MagicInit::new(0x0000040020200200, 34496),
+    MagicInit::new(0x0002008010100100, 84966),
+    MagicInit::new(0x0000008020010020, 54341),
+    MagicInit::new(0x0000008020200040, 60421),
+    MagicInit::new(0x0000820020004020, 86402),
+    MagicInit::new(0x00fffd1800300030, 50245),
+    MagicInit::new(0x007fff7fbfd40020, 76622),
+    MagicInit::new(0x003fffbd00180018, 84676),
+    MagicInit::new(0x001fffde80180018, 78757),
+    MagicInit::new(0x000fffe0bfe80018, 37346),
+    MagicInit::new(0x0001000080202001, 370),
+    MagicInit::new(0x0003fffbff980180, 42182),
+    MagicInit::new(0x0001fffdff9000e0, 45385),
+    MagicInit::new(0x00fffefeebffd800, 61659),
+    MagicInit::new(0x007ffff7ffc01400, 12790),
+    MagicInit::new(0x003fffbfe4ffe800, 16762),
+    MagicInit::new(0x001ffff01fc03000, 0),
+    MagicInit::new(0x000fffe7f8bfe800, 38380),
+    MagicInit::new(0x0007ffdfdf3ff808, 11098),
+    MagicInit::new(0x0003fff85fffa804, 21803),
+    MagicInit::new(0x0001fffd75ffa802, 39189),
+    MagicInit::new(0x00ffffd7ffebffd8, 58628),
+    MagicInit::new(0x007fff75ff7fbfd8, 44116),
+    MagicInit::new(0x003fff863fbf7fd8, 78357),
+    MagicInit::new(0x001fffbfdfd7ffd8, 44481),
+    MagicInit::new(0x000ffff810280028, 64134),
+    MagicInit::new(0x0007ffd7f7feffd8, 41759),
+    MagicInit::new(0x0003fffc0c480048, 1394),
+    MagicInit::new(0x0001ffffafd7ffd8, 40910),
+    MagicInit::new(0x00ffffe4ffdfa3ba, 66516),
+    MagicInit::new(0x007fffef7ff3d3da, 3897),
+    MagicInit::new(0x003fffbfdfeff7fa, 3930),
+    MagicInit::new(0x001fffeff7fbfc22, 72934),
+    MagicInit::new(0x0000020408001001, 72662),
+    MagicInit::new(0x0007fffeffff77fd, 56325),
+    MagicInit::new(0x0003ffffbf7dfeec, 66501),
+    MagicInit::new(0x0001ffff9dffa333, 14826),
 ];
 
 // Compute the attack's index using the 'magic bitboards' approach
@@ -416,29 +450,6 @@ pub fn file_bb(f: File) -> Bitboard {
     unsafe { FILE_BB[f as usize] }
 }
 
-// bitboard!(A1, A2, ...) creates a bitboard with squares A1, A2, ...
-
-macro_rules! bitboard {
-    () => { Bitboard(0) };
-    ($sq:ident) => { bitboard!() | Square::$sq };
-    ($sq:ident, $($sqs:ident),+) => { bitboard!($($sqs),*) | Square::$sq };
-}
-
-// shift() moves a bitboard one step along direction D. Mainly for pawns.
-
-impl Bitboard {
-    pub fn shift(self, d: Direction) -> Bitboard {
-        match d {
-            NORTH => self << 8,
-            SOUTH => self >> 8,
-            NORTH_EAST => (self & !FILEH_BB) << 9,
-            SOUTH_EAST => (self & !FILEH_BB) >> 7,
-            NORTH_WEST => (self & !FILEA_BB) << 7,
-            SOUTH_WEST => (self & !FILEA_BB) >> 9,
-            _ => Bitboard(0)
-        }
-    }
-}
 
 // adjacent_files_bb() returns a bitboard representing all the squares on
 // the adjacent files of the given one.

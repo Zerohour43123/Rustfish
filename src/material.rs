@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std;
+
 
 use bitboard::*;
 use endgame::*;
@@ -31,7 +31,7 @@ impl Entry {
     }
 
     pub fn imbalance(&self) -> Score {
-        Score::make(self.value as i32, self.value as i32)
+        Score::new(self.value as i32, self.value as i32)
     }
 
     pub fn game_phase(&self) -> Phase {
@@ -154,9 +154,8 @@ pub fn probe(pos: &Position) -> &'static mut Entry {
     // Map total non-pawn material into [PHASE_ENDGAME, PHASE_MIDGAME]
     let npm_w = pos.non_pawn_material_c(WHITE);
     let npm_b = pos.non_pawn_material_c(BLACK);
-    let npm =
-        std::cmp::max(ENDGAME_LIMIT,
-                      std::cmp::min(npm_w + npm_b, MIDGAME_LIMIT));
+    let npm = (npm_w + npm_b).clamp(ENDGAME_LIMIT, MIDGAME_LIMIT);
+
     e.game_phase =
         ((npm - ENDGAME_LIMIT) * PHASE_MIDGAME) /
             (MIDGAME_LIMIT - ENDGAME_LIMIT);

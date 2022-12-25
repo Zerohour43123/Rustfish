@@ -1152,16 +1152,11 @@ fn setup_pairs(
     let min_len = data[9];
     let h = (max_len - min_len + 1) as usize;
     let num_syms = u16::from_le(cast_slice(&data[10 + 2 * h..], 1)[0]) as usize;
-    let mut sym_len = Vec::with_capacity(num_syms);
-    for _ in 0..num_syms {
-        sym_len.push(0u8);
-    }
+    let mut sym_len = vec![0u8; num_syms];
+
     let sym_pat = cast_slice::<[u8; 3]>(&data[12 + 2 * h..], num_syms);
 
-    let mut tmp = Vec::with_capacity(num_syms);
-    for _ in 0..num_syms {
-        tmp.push(0u8);
-    }
+    let mut tmp = vec![0u8; num_syms];
     for s in 0..num_syms {
         calc_sym_len(&mut sym_len, sym_pat, s, &mut tmp);
     }
@@ -1174,10 +1169,7 @@ fn setup_pairs(
     *data_ref = &data[12 + 2 * h + 3 * num_syms + (num_syms & 1)..];
 
     let offset = cast_slice::<u16>(&data[10..], h);
-    let mut base = Vec::with_capacity(h);
-    for _ in 0..h {
-        base.push(0u64);
-    }
+    let mut base = vec![0u64; h];
     for i in (0..h - 1).rev() {
         let b1 = u16::from_le(offset[i]) as u64;
         let b2 = u16::from_le(offset[i + 1]) as u64;
@@ -2019,7 +2011,7 @@ pub fn expand_mate(pos: &mut Position, idx: usize) {
     }
 
     // Now try to expand until the actual mate
-    if popcount(pos.pieces()) <= cardinality_dtm() {
+    if Bitboard::pop_count(pos.pieces()) <= cardinality_dtm() {
         while v != -Value::MATE {
             v = if v > Value::ZERO { -v - 1 } else { -v + 1 };
             wdl = -wdl;
@@ -2066,7 +2058,7 @@ pub fn rank_root_moves(pos: &mut Position, root_moves: &mut RootMoves) {
     let mut dtz_available = true;
     let mut dtm_available = false;
 
-    if cardinality() >= popcount(pos.pieces())
+    if cardinality() >= Bitboard::pop_count(pos.pieces())
         && !pos.has_castling_right(ANY_CASTLING)
     {
         // Try to rank moves using DTZ tables
@@ -2081,7 +2073,7 @@ pub fn rank_root_moves(pos: &mut Position, root_moves: &mut RootMoves) {
         }
 
         // If ranking was successful, try to obtain mate values from DTM tables
-        if root_in_tb && cardinality_dtm() >= popcount(pos.pieces()) {
+        if root_in_tb && cardinality_dtm() >= Bitboard::pop_count(pos.pieces()) {
             dtm_available = root_probe_dtm(pos, root_moves);
         }
     }

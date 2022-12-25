@@ -262,15 +262,12 @@ fn evaluate_krkp(pos: &Position, strong_side: Color) -> Value {
     let result;
 
     // If the strong side's king is in front of the pawn, it is a win.
-    if wksq.0 < psq.0 && wksq.file() == psq.file() {
-        result = RookValueEg - Square::distance(wksq, psq) as i32;
-    }
+    // OR
     // If the weaker side's king is too far from the pawn and the rook,
     // it is a win.
-    else if Square::distance(bksq, psq) >=
+    if (wksq.0 < psq.0 && wksq.file() == psq.file()) || (Square::distance(bksq, psq) >=
         3 + (pos.side_to_move() == weak_side) as u32
-        && Square::distance(bksq, rsq) >= 3
-    {
+        && Square::distance(bksq, rsq) >= 3) {
         result = RookValueEg - Square::distance(wksq, psq) as i32;
     }
     // If the pawn is far advanced and supported by the defending king,
@@ -821,20 +818,18 @@ fn scale_kbppkb(pos: &Position, strong_side: Color) -> ScaleFactor {
             // controls the square in front of the frontmost pawn's path,
             // and the square diagonally behind this square on the file of
             // the other pawn.
-            if ksq == block_sq1
+            if (ksq == block_sq1
                 && opposite_colors(ksq, wbsq)
                 && (bbsq == block_sq2
                 || pos.attacks_from(BISHOP, block_sq2)
                 & pos.pieces_cp(weak_side, BISHOP) != 0
-                || u32::distance(r1, r2) >= 2)
-            {
-                ScaleFactor::DRAW
-            } else if ksq == block_sq2
-                && opposite_colors(ksq, wbsq)
-                && (bbsq == block_sq1
-                || pos.attacks_from(BISHOP, block_sq1)
-                & pos.pieces_cp(weak_side, BISHOP) != 0)
-            {
+                || u32::distance(r1, r2) >= 2))
+                ||
+                (ksq == block_sq2
+                    && opposite_colors(ksq, wbsq)
+                    && (bbsq == block_sq1
+                    || pos.attacks_from(BISHOP, block_sq1)
+                    & pos.pieces_cp(weak_side, BISHOP) != 0)) {
                 ScaleFactor::DRAW
             } else {
                 ScaleFactor::NONE

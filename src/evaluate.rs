@@ -91,8 +91,6 @@ impl<'a> EvalInfo<'a> {
     }
 }
 
-macro_rules! s { ($x:expr, $y:expr) => (Score(($y << 16) + $x)) }
-
 const S0: Score = Score::ZERO;
 
 // MOBILITY_BONUS[PieceType-2][attacked] contains bonuses for middle and end
@@ -100,26 +98,26 @@ const S0: Score = Score::ZERO;
 // area.
 const MOBILITY_BONUS: [[Score; 32]; 4] = [
     // Knights
-    [s!(-75,-76), s!(-57,-54), s!( -9,-28), s!( -2,-10), s!(  6,  5),
-        s!( 14, 12), s!( 22, 26), s!( 29, 29), s!( 36, 29), S0, S0, S0, S0, S0,
+    [Score::new(-75, -76), Score::new(-57, -54), Score::new(-9, -28), Score::new(-2, -10), Score::new(6, 5),
+        Score::new(14, 12), Score::new(22, 26), Score::new(29, 29), Score::new(36, 29), S0, S0, S0, S0, S0,
         S0, S0, S0, S0, S0, S0, S0, S0, S0, S0, S0, S0, S0, S0, S0, S0, S0, S0],
     // Bishops
-    [s!(-48,-59), s!(-20,-23), s!( 16, -3), s!( 26, 13), s!( 38, 24),
-        s!( 51, 42), s!( 55, 54), s!( 63, 57), s!( 63, 65), s!( 68, 73),
-        s!( 81, 78), s!( 81, 86), s!( 91, 88), s!( 98, 97), S0, S0, S0, S0, S0,
+    [Score::new(-48, -59), Score::new(-20, -23), Score::new(16, -3), Score::new(26, 13), Score::new(38, 24),
+        Score::new(51, 42), Score::new(55, 54), Score::new(63, 57), Score::new(63, 65), Score::new(68, 73),
+        Score::new(81, 78), Score::new(81, 86), Score::new(91, 88), Score::new(98, 97), S0, S0, S0, S0, S0,
         S0, S0, S0, S0, S0, S0, S0, S0, S0, S0, S0, S0, S0],
     // Rooks
-    [s!(-58,-76), s!(-27,-18), s!(-15, 28), s!(-10, 55), s!( -5, 69),
-        s!( -2, 82), s!(  9,112), s!( 16,118), s!( 30,132), s!( 29,142),
-        s!( 32,155), s!( 38,165), s!( 46,166), s!( 48,169), s!( 58,171), S0, S0,
+    [Score::new(-58, -76), Score::new(-27, -18), Score::new(-15, 28), Score::new(-10, 55), Score::new(-5, 69),
+        Score::new(-2, 82), Score::new(9, 112), Score::new(16, 118), Score::new(30, 132), Score::new(29, 142),
+        Score::new(32, 155), Score::new(38, 165), Score::new(46, 166), Score::new(48, 169), Score::new(58, 171), S0, S0,
         S0, S0, S0, S0, S0, S0, S0, S0, S0, S0, S0, S0, S0, S0, S0],
     // Queens
-    [s!(-39,-36), s!(-21,-15), s!(  3,  8), s!(  3, 18), s!( 14, 34),
-        s!( 22, 54), s!( 28, 61), s!( 41, 73), s!( 43, 79), s!( 48, 92),
-        s!( 56, 94), s!( 60,104), s!( 60,113), s!( 66,120), s!( 67,123),
-        s!( 70,126), s!( 71,133), s!( 73,136), s!( 79,140), s!( 88,143),
-        s!( 88,148), s!( 99,166), s!(102,170), s!(102,175), s!(106,184),
-        s!(109,191), s!(113,206), s!(116,212), S0, S0, S0, S0]
+    [Score::new(-39, -36), Score::new(-21, -15), Score::new(3, 8), Score::new(3, 18), Score::new(14, 34),
+        Score::new(22, 54), Score::new(28, 61), Score::new(41, 73), Score::new(43, 79), Score::new(48, 92),
+        Score::new(56, 94), Score::new(60, 104), Score::new(60, 113), Score::new(66, 120), Score::new(67, 123),
+        Score::new(70, 126), Score::new(71, 133), Score::new(73, 136), Score::new(79, 140), Score::new(88, 143),
+        Score::new(88, 148), Score::new(99, 166), Score::new(102, 170), Score::new(102, 175), Score::new(106, 184),
+        Score::new(109, 191), Score::new(113, 206), Score::new(116, 212), S0, S0, S0, S0]
 ];
 
 // OUTPOST[KNIGHT/BISHOP][supported by pawn contains bonuses for minor
@@ -127,30 +125,30 @@ const MOBILITY_BONUS: [[Score; 32]; 4] = [
 // supported by a pawn. If the minor piece occupied an output square, the
 // outscore is doubled.
 const OUTPOST: [[Score; 2]; 2] = [
-    [s!(22, 6), s!(36,12)], // Knight
-    [s!( 9, 2), s!(15, 5)]  // Bishop
+    [Score::new(22, 6), Score::new(36, 12)], // Knight
+    [Score::new(9, 2), Score::new(15, 5)]  // Bishop
 ];
 
 // ROOK_ON_FILE[semiopen/open] contains bonuses for each rook value when
 // there is no friendly pawns on the rook file.
-const ROOK_ON_FILE: [Score; 2] = [s!(20, 7), s!(45, 20)];
+const ROOK_ON_FILE: [Score; 2] = [Score::new(20, 7), Score::new(45, 20)];
 
 // THREAT_BY_MINOR/BY_ROOK[attacked PieceType] contains bonuses according to
 // which piece type attacks which one. Attacks on lesser pieces which are
 // pawn-defended are not considered.
 const THREAT_BY_MINOR: [Score; 8] = [
-    s!(0, 0), s!(0, 31), s!(39, 42), s!(57, 44), s!(68, 112), s!(47, 120),
+    Score::new(0, 0), Score::new(0, 31), Score::new(39, 42), Score::new(57, 44), Score::new(68, 112), Score::new(47, 120),
     S0, S0,
 ];
 
 const THREAT_BY_ROOK: [Score; 8] = [
-    s!(0, 0), s!(0, 24), s!(38, 71), s!(38, 61), s!(0, 38), s!(36, 38),
+    Score::new(0, 0), Score::new(0, 24), Score::new(38, 71), Score::new(38, 61), Score::new(0, 38), Score::new(36, 38),
     S0, S0,
 ];
 
 // THREAT_BY_KING[on one/on many] contains bonuses for king attacks on pawns
 // or pieces which are not pawn-defended.
-const THREAT_BY_KING: [Score; 2] = [s!(3, 65), s!(9, 145)];
+const THREAT_BY_KING: [Score; 2] = [Score::new(3, 65), Score::new(9, 145)];
 
 // PASSED[mg/eg][Rank] contains midgame and endgame bonuses for passed pawns.
 // We don't use a Score because we process the two components independently.
@@ -161,8 +159,8 @@ const PASSED: [[i32; 8]; 2] = [
 
 // PASSED_FILE[File] contains a bonus according to the file of a passed pawn
 const PASSED_FILE: [Score; 8] = [
-    s!(  9, 10), s!(  2, 10), s!(  1, -8), s!(-20,-12),
-    s!(-20,-12), s!(  1, -8), s!(  2, 10), s!(  9, 10),
+    Score::new(9, 10), Score::new(2, 10), Score::new(1, -8), Score::new(-20, -12),
+    Score::new(-20, -12), Score::new(1, -8), Score::new(2, 10), Score::new(9, 10),
 ];
 
 // Rank-dependent factor for a passed-pawn bonus
@@ -171,26 +169,26 @@ const RANK_FACTOR: [i32; 8] = [0, 0, 0, 2, 7, 12, 19, 0];
 // KING_PROTECTOR[PieceType-2] contains a bonus according to distance from
 // king
 const KING_PROTECTOR: [Score; 4] = [
-    s!(-3, -5), s!(-4, -3), s!(-3, 0), s!(-1, 1)
+    Score::new(-3, -5), Score::new(-4, -3), Score::new(-3, 0), Score::new(-1, 1)
 ];
 
 // Assorted bonuses and penalties used by evaluation
-const MINOR_BEHIND_PAWN: Score = s!( 16,  0);
-const BISHOP_PAWNS: Score = s!(  8, 12);
-const LONG_RANGED_BISHOP: Score = s!( 22,  0);
-const ROOK_ON_PAWN: Score = s!(  8, 24);
-const TRAPPED_ROOK: Score = s!( 92,  0);
-const WEAK_QUEEN: Score = s!( 50, 10);
-const CLOSE_ENEMIES: Score = s!(  7,  0);
-const PAWNLESS_FLANK: Score = s!( 20, 80);
-const THREAT_BY_SAFE_PAWN: Score = s!(175,168);
-const THREAT_BY_RANK: Score = s!( 16,  3);
-const HANGING: Score = s!( 52, 30);
-const WEAK_UNOPPOSED_PAWN: Score = s!(  5, 25);
-const THREAT_BY_PAWN_PUSH: Score = s!( 47, 26);
-const THREAT_BY_ATTACK_ON_QUEEN: Score = s!( 42, 21);
-const HINDER_PASSED_PAWN: Score = s!(  8,  1);
-const TRAPPED_BISHOP_A1H1: Score = s!( 50, 50);
+const MINOR_BEHIND_PAWN: Score = Score::new(16, 0);
+const BISHOP_PAWNS: Score = Score::new(8, 12);
+const LONG_RANGED_BISHOP: Score = Score::new(22, 0);
+const ROOK_ON_PAWN: Score = Score::new(8, 24);
+const TRAPPED_ROOK: Score = Score::new(92, 0);
+const WEAK_QUEEN: Score = Score::new(50, 10);
+const CLOSE_ENEMIES: Score = Score::new(7, 0);
+const PAWNLESS_FLANK: Score = Score::new(20, 80);
+const THREAT_BY_SAFE_PAWN: Score = Score::new(175, 168);
+const THREAT_BY_RANK: Score = Score::new(16, 3);
+const HANGING: Score = Score::new(52, 30);
+const WEAK_UNOPPOSED_PAWN: Score = Score::new(5, 25);
+const THREAT_BY_PAWN_PUSH: Score = Score::new(47, 26);
+const THREAT_BY_ATTACK_ON_QUEEN: Score = Score::new(42, 21);
+const HINDER_PASSED_PAWN: Score = Score::new(8, 1);
+const TRAPPED_BISHOP_A1H1: Score = Score::new(50, 50);
 
 // king_attack_weights[PieceType] contains king attack weights by piece
 // type
@@ -243,7 +241,7 @@ fn initialize<Us: ColorTrait>(pos: &Position, ei: &mut EvalInfo) {
         }
 
         ei.king_attackers_count[them.0 as usize] =
-            popcount(b & ei.pe.pawn_attacks(them)) as i32;
+            Bitboard::pop_count(b & ei.pe.pawn_attacks(them)) as i32;
         ei.king_adjacent_zone_attacks_count[them.0 as usize] = 0;
         ei.king_attackers_weight[them.0 as usize] = 0;
     } else {
@@ -305,11 +303,11 @@ fn evaluate_pieces<Us: ColorTrait, Pt: PieceTypeTrait>(
             ei.king_attackers_weight[us.0 as usize] +=
                 KING_ATTACK_WEIGHTS[pt.0 as usize];
             ei.king_adjacent_zone_attacks_count[us.0 as usize] +=
-                popcount(b & ei.attacked_by[them.0 as usize][KING.0 as usize])
+                Bitboard::pop_count(b & ei.attacked_by[them.0 as usize][KING.0 as usize])
                     as i32;
         }
 
-        let mob = popcount(b & ei.mobility_area[us.0 as usize]);
+        let mob = Bitboard::pop_count(b & ei.mobility_area[us.0 as usize]);
 
         ei.mobility[us.0 as usize] +=
             MOBILITY_BONUS[(pt.0 - 2) as usize][mob as usize];
@@ -382,7 +380,7 @@ fn evaluate_pieces<Us: ColorTrait, Pt: PieceTypeTrait>(
         if pt == ROOK {
             // Bonus for aligning with enemy pawns on the same rank/file
             if s.relative_rank(us) >= RANK_5 {
-                score += ROOK_ON_PAWN * (popcount(
+                score += ROOK_ON_PAWN * (Bitboard::pop_count(
                     pos.pieces_cp(them, PAWN) & pseudo_attacks(ROOK, s)
                 ) as i32);
             }
@@ -400,7 +398,7 @@ fn evaluate_pieces<Us: ColorTrait, Pt: PieceTypeTrait>(
 
                 if (kf < FILE_E) == (s.file() < kf)
                 {
-                    score -= (TRAPPED_ROOK - Score::make((mob as i32) * 22, 0))
+                    score -= (TRAPPED_ROOK - Score::new((mob as i32) * 22, 0))
                         * (1 + ((!pos.can_castle(us)) as i32));
                 }
             }
@@ -435,7 +433,7 @@ fn evaluate_king<Us: ColorTrait>(pos: &Position, ei: &mut EvalInfo) -> Score {
 
     // Main king safety evaluation
     if ei.king_attackers_count[them.0 as usize] >
-        (1 - popcount(pos.pieces_cp(them, QUEEN)) as i32)
+        (1 - Bitboard::pop_count(pos.pieces_cp(them, QUEEN)) as i32)
     {
         // Attacked squares defended at most once by our queen or king
         let weak =
@@ -501,8 +499,8 @@ fn evaluate_king<Us: ColorTrait>(pos: &Position, ei: &mut EvalInfo) -> Score {
             ei.king_attackers_count[them.0 as usize] *
                 ei.king_attackers_weight[them.0 as usize]
                 + 102 * ei.king_adjacent_zone_attacks_count[them.0 as usize]
-                + 191 * popcount(ei.king_ring[us.0 as usize] & weak) as i32
-                + 143 * popcount(pinned | unsafe_checks) as i32
+                + 191 * Bitboard::pop_count(ei.king_ring[us.0 as usize] & weak) as i32
+                + 143 * Bitboard::pop_count(pinned | unsafe_checks) as i32
                 - 848 * (pos.count(them, QUEEN) == 0) as i32
                 - 9 * score.mg().0 / 8
                 + 40;
@@ -513,8 +511,8 @@ fn evaluate_king<Us: ColorTrait>(pos: &Position, ei: &mut EvalInfo) -> Score {
             let mobility_danger = (ei.mobility[them.0 as usize]
                 - ei.mobility[us.0 as usize]).mg().0;
             king_danger = std::cmp::max(0, king_danger + mobility_danger);
-            score -= Score::make(king_danger * king_danger / 4096,
-                                 king_danger / 16);
+            score -= Score::new(king_danger * king_danger / 4096,
+                                king_danger / 16);
         }
     }
 
@@ -526,7 +524,7 @@ fn evaluate_king<Us: ColorTrait>(pos: &Position, ei: &mut EvalInfo) -> Score {
 
     debug_assert!(((if us == WHITE { b << 4 } else { b >> 4 }) & b) == 0);
     debug_assert!(
-        popcount(if us == WHITE { b << 4 } else { b >> 4 }) == popcount(b));
+        Bitboard::pop_count(if us == WHITE { b << 4 } else { b >> 4 }) == Bitboard::pop_count(b));
 
     // Second, add the squares which are attacked twice in that flank and
     // which are not defended by our pawns.
@@ -534,7 +532,7 @@ fn evaluate_king<Us: ColorTrait>(pos: &Position, ei: &mut EvalInfo) -> Score {
         | (b & ei.attacked_by2[them.0 as usize]
         & !ei.attacked_by[us.0 as usize][PAWN.0 as usize]);
 
-    score -= CLOSE_ENEMIES * (popcount(b) as i32);
+    score -= CLOSE_ENEMIES * (Bitboard::pop_count(b) as i32);
 
     // Penalty when our king is on a pawnless flank
     if pos.pieces_p(PAWN) & KING_FLANK[kf as usize] == 0 {
@@ -565,7 +563,7 @@ fn evaluate_threats<Us: ColorTrait>(pos: &Position, ei: &EvalInfo) -> Score {
 
         let safe_threats = (b.shift(right) | b.shift(left)) & weak;
 
-        score += THREAT_BY_SAFE_PAWN * (popcount(safe_threats) as i32);
+        score += THREAT_BY_SAFE_PAWN * (Bitboard::pop_count(safe_threats) as i32);
     }
 
     // Squares strongly protected by the opponent, either because they attack
@@ -607,7 +605,7 @@ fn evaluate_threats<Us: ColorTrait>(pos: &Position, ei: &EvalInfo) -> Score {
             }
         }
 
-        score += HANGING * (popcount(weak
+        score += HANGING * (Bitboard::pop_count(weak
             & !ei.attacked_by[them.0 as usize][ALL_PIECES.0 as usize]) as i32);
 
         let b = weak & ei.attacked_by[us.0 as usize][KING.0 as usize];
@@ -635,7 +633,7 @@ fn evaluate_threats<Us: ColorTrait>(pos: &Position, ei: &EvalInfo) -> Score {
         & pos.pieces_c(them)
         & !ei.attacked_by[us.0 as usize][PAWN.0 as usize];
 
-    score += THREAT_BY_PAWN_PUSH * (popcount(b) as i32);
+    score += THREAT_BY_PAWN_PUSH * (Bitboard::pop_count(b) as i32);
 
     // Add a bonus for safe slider attack threats on opponent queen
     let safe_threats = !pos.pieces_c(us) & !ei.attacked_by2[them.0 as usize]
@@ -646,7 +644,7 @@ fn evaluate_threats<Us: ColorTrait>(pos: &Position, ei: &EvalInfo) -> Score {
         & ei.attacked_by[them.0 as usize][QUEEN.0 as usize]
         & !ei.attacked_by[them.0 as usize][QUEEN_DIAGONAL.0 as usize]);
 
-    score += THREAT_BY_ATTACK_ON_QUEEN * popcount(b & safe_threats) as i32;
+    score += THREAT_BY_ATTACK_ON_QUEEN * Bitboard::pop_count(b & safe_threats) as i32;
 
     score
 }
@@ -676,7 +674,7 @@ fn evaluate_passed_pawns<Us: ColorTrait>(
         let bb = forward_file_bb(us, s)
             & (ei.attacked_by[them.0 as usize][ALL_PIECES.0 as usize]
             | pos.pieces_c(them));
-        score -= HINDER_PASSED_PAWN * popcount(bb) as i32;
+        score -= HINDER_PASSED_PAWN * Bitboard::pop_count(bb) as i32;
 
         let r = s.relative_rank(us);
         let rr = RANK_FACTOR[r as usize];
@@ -753,7 +751,7 @@ fn evaluate_passed_pawns<Us: ColorTrait>(
             ebonus /= 2;
         }
 
-        score += Score::make(mbonus, ebonus) + PASSED_FILE[s.file() as usize];
+        score += Score::new(mbonus, ebonus) + PASSED_FILE[s.file() as usize];
     }
 
     score
@@ -794,11 +792,11 @@ fn evaluate_space<Us: ColorTrait>(pos: &Position, ei: &EvalInfo) -> Score {
     debug_assert!((safe >> (if us == WHITE { 32 } else { 0 })).0 as u32 == 0);
 
     // ...count safe + (behind & safe) with a single popcount.
-    let bonus = popcount((if us == WHITE { safe << 32 } else { safe >> 32 })
+    let bonus = Bitboard::pop_count((if us == WHITE { safe << 32 } else { safe >> 32 })
         | (behind & safe)) as i32;
     let weight = pos.count(us, ALL_PIECES) - 2 * ei.pe.open_files();
 
-    Score::make(bonus * weight * weight / 16, 0)
+    Score::new(bonus * weight * weight / 16, 0)
 }
 
 // evaluate_initiative() computes the initiative correction value for the
@@ -824,7 +822,7 @@ fn evaluate_initiative(pos: &Position, ei: &EvalInfo, eg: Value) -> Score {
     let v = ((eg.0 > 0) as i32 - (eg.0 < 0) as i32) *
         std::cmp::max(initiative, -eg.0.abs());
 
-    Score::make(0, v)
+    Score::new(0, v)
 }
 
 // evaluate_scale_factor() computes the scale factor for the winning side
