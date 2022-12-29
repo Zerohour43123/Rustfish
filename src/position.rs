@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-
+#[forbid(unsafe_code)]
 use std;
 use std::sync::Arc;
 
@@ -16,38 +16,40 @@ use types::*;
 use uci;
 
 pub mod zobrist {
+    use std::sync::RwLock;
+
     use bitboard;
     use misc;
     use types::*;
 
-    static mut PSQ: [[Key; 64]; 16] = [[Key(0); 64]; 16];
-    static mut ENPASSANT: [Key; 8] = [Key(0); 8];
-    static mut CASTLING: [Key; 16] = [Key(0); 16];
-    static mut SIDE: Key = Key(0);
-    static mut NO_PAWNS: Key = Key(0);
+    static PSQ: RwLock<[[Key; 64]; 16]> = RwLock::new([[Key(0); 64]; 16]);
+    static ENPASSANT: RwLock<[Key; 8]> = RwLock::new([Key(0); 8]);
+    static CASTLING: RwLock<[Key; 16]> = RwLock::new([Key(0); 16]);
+    static SIDE: RwLock<Key> = RwLock::new(Key(0));
+    static NO_PAWNS: RwLock<Key> = RwLock::new(Key(0));
 
     pub fn psq(pc: Piece, s: Square) -> Key {
-        unsafe { PSQ[pc.0 as usize][s.0 as usize] }
+        PSQ.read().unwrap()[pc.0 as usize][s.0 as usize]
     }
 
     pub fn material(pc: Piece, num: i32) -> Key {
-        unsafe { PSQ[pc.0 as usize][num as usize] }
+        PSQ.read().unwrap()[pc.0 as usize][num as usize]
     }
 
     pub fn enpassant(f: File) -> Key {
-        unsafe { ENPASSANT[f as usize] }
+        ENPASSANT.read().unwrap()[f as usize]
     }
 
     pub fn castling(cr: CastlingRight) -> Key {
-        unsafe { CASTLING[cr.0 as usize] }
+        CASTLING.read().unwrap()[cr.0 as usize]
     }
 
     pub fn side() -> Key {
-        unsafe { SIDE }
+        *SIDE.read().unwrap()
     }
 
     pub fn no_pawns() -> Key {
-        unsafe { NO_PAWNS }
+        *NO_PAWNS.read().unwrap()
     }
 
     // position::init() initializes at startup the various arrays used to
@@ -56,30 +58,38 @@ pub mod zobrist {
     pub fn init() {
         let mut rng = misc::Prng::new(1070372);
 
-        unsafe {
+        if let Ok(mut psq) = PSQ.write() {
             for i in 1..15 {
                 if i != 7 && i != 8 {
                     for s in 0..64 {
-                        PSQ[i][s] = Key(rng.rand64());
+                        psq[i][s] = Key(rng.rand64());
                     }
                 }
             }
+        }
 
+        if let Ok(mut enpassant) = ENPASSANT.write() {
             for f in 0..8 {
-                ENPASSANT[f] = Key(rng.rand64());
+                enpassant[f] = Key(rng.rand64());
             }
+        }
 
+        if let Ok(mut castling) = CASTLING.write() {
             for cr in 0..16 {
                 let b = bitboard::Bitboard(cr);
                 for s in b {
-                    let k = CASTLING[1usize << s.0];
-                    CASTLING[cr as usize] ^=
-                        if k.0 != 0 { k } else { Key(rng.rand64()) };
+                    let k = castling[1usize << s.0];
+                    castling[cr as usize] ^= if k.0 != 0 { k } else { Key(rng.rand64()) };
                 }
             }
+        }
 
-            SIDE = Key(rng.rand64());
-            NO_PAWNS = Key(rng.rand64());
+        if let Ok(mut side) = SIDE.write() {
+            *side = Key(rng.rand64());
+        }
+
+        if let Ok(mut no_pawns) = NO_PAWNS.write() {
+            *no_pawns = Key(rng.rand64());
         }
     }
 }
