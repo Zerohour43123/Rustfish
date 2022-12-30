@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-
+#[allow(dead_code)]
 #[derive(Clone, Copy)]
 pub struct Prng(u64);
 
@@ -19,11 +19,11 @@ pub struct Prng(u64);
 //   <http://vigna.di.unimi.it/ftp/papers/xorshift.pdf>
 
 impl Prng {
-    pub fn new(seed: u64) -> Prng {
+    pub fn _new(seed: u64) -> Prng {
         Prng(seed)
     }
 
-    pub fn rand64(&mut self) -> u64 {
+    pub fn _rand64(&mut self) -> u64 {
         self.0 ^= self.0 >> 12;
         self.0 ^= self.0 << 25;
         self.0 ^= self.0 >> 27;

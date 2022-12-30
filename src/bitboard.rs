@@ -20,6 +20,13 @@ macro_rules! bitboard {
 }
 
 
+pub const fn pop_lsb_const(mut b: Bitboard) -> Square {
+    let s = lsb(b);
+    b.0 &= u64::wrapping_sub(b.0, 1);
+    s
+}
+
+
 // shift() moves a bitboard one step along direction D. Mainly for pawns.
 
 impl Bitboard {
@@ -39,6 +46,9 @@ impl Bitboard {
         self.0.count_ones()
     }
 
+    const fn shl_const(self, rhs: i32) -> Self {
+        Bitboard(self.0 << rhs)
+    }
 }
 
 pub const ALL_SQUARES: Bitboard = Bitboard(!0u64);
@@ -64,11 +74,124 @@ pub const RANK8_BB: Bitboard = Bitboard(0xff00000000000000);
 
 static mut SQUARE_DISTANCE: [[u32; 64]; 64] = [[0; 64]; 64];
 
-static mut SQUARE_BB: [Bitboard; 64] = [Bitboard(0); 64];
-static mut FILE_BB: [Bitboard; 8] = [Bitboard(0); 8];
-static mut RANK_BB: [Bitboard; 8] = [Bitboard(0); 8];
-static mut ADJACENT_FILES_BB: [Bitboard; 8] = [Bitboard(0); 8];
-static mut FORWARD_RANKS_BB: [[Bitboard; 8]; 2] = [[Bitboard(0); 8]; 2];
+const SQUARE_BB: [Bitboard; 64] = [
+    Bitboard(0b1),
+    Bitboard(0b10),
+    Bitboard(0b100),
+    Bitboard(0b1000),
+    Bitboard(0b10000),
+    Bitboard(0b100000),
+    Bitboard(0b1000000),
+    Bitboard(0b10000000),
+    Bitboard(0b100000000),
+    Bitboard(0b1000000000),
+    Bitboard(0b10000000000),
+    Bitboard(0b100000000000),
+    Bitboard(0b1000000000000),
+    Bitboard(0b10000000000000),
+    Bitboard(0b100000000000000),
+    Bitboard(0b1000000000000000),
+    Bitboard(0b10000000000000000),
+    Bitboard(0b100000000000000000),
+    Bitboard(0b1000000000000000000),
+    Bitboard(0b10000000000000000000),
+    Bitboard(0b100000000000000000000),
+    Bitboard(0b1000000000000000000000),
+    Bitboard(0b10000000000000000000000),
+    Bitboard(0b100000000000000000000000),
+    Bitboard(0b1000000000000000000000000),
+    Bitboard(0b10000000000000000000000000),
+    Bitboard(0b100000000000000000000000000),
+    Bitboard(0b1000000000000000000000000000),
+    Bitboard(0b10000000000000000000000000000),
+    Bitboard(0b100000000000000000000000000000),
+    Bitboard(0b1000000000000000000000000000000),
+    Bitboard(0b10000000000000000000000000000000),
+    Bitboard(0b100000000000000000000000000000000),
+    Bitboard(0b1000000000000000000000000000000000),
+    Bitboard(0b10000000000000000000000000000000000),
+    Bitboard(0b100000000000000000000000000000000000),
+    Bitboard(0b1000000000000000000000000000000000000),
+    Bitboard(0b10000000000000000000000000000000000000),
+    Bitboard(0b100000000000000000000000000000000000000),
+    Bitboard(0b1000000000000000000000000000000000000000),
+    Bitboard(0b10000000000000000000000000000000000000000),
+    Bitboard(0b100000000000000000000000000000000000000000),
+    Bitboard(0b1000000000000000000000000000000000000000000),
+    Bitboard(0b10000000000000000000000000000000000000000000),
+    Bitboard(0b100000000000000000000000000000000000000000000),
+    Bitboard(0b1000000000000000000000000000000000000000000000),
+    Bitboard(0b10000000000000000000000000000000000000000000000),
+    Bitboard(0b100000000000000000000000000000000000000000000000),
+    Bitboard(0b1000000000000000000000000000000000000000000000000),
+    Bitboard(0b10000000000000000000000000000000000000000000000000),
+    Bitboard(0b100000000000000000000000000000000000000000000000000),
+    Bitboard(0b1000000000000000000000000000000000000000000000000000),
+    Bitboard(0b10000000000000000000000000000000000000000000000000000),
+    Bitboard(0b100000000000000000000000000000000000000000000000000000),
+    Bitboard(0b1000000000000000000000000000000000000000000000000000000),
+    Bitboard(0b10000000000000000000000000000000000000000000000000000000),
+    Bitboard(0b100000000000000000000000000000000000000000000000000000000),
+    Bitboard(0b1000000000000000000000000000000000000000000000000000000000),
+    Bitboard(0b10000000000000000000000000000000000000000000000000000000000),
+    Bitboard(0b100000000000000000000000000000000000000000000000000000000000),
+    Bitboard(0b1000000000000000000000000000000000000000000000000000000000000),
+    Bitboard(0b10000000000000000000000000000000000000000000000000000000000000),
+    Bitboard(0b100000000000000000000000000000000000000000000000000000000000000),
+    Bitboard(0b1000000000000000000000000000000000000000000000000000000000000000),
+];
+const FILE_BB: [Bitboard; 8] = [
+    Bitboard(0b100000001000000010000000100000001000000010000000100000001),
+    Bitboard(0b1000000010000000100000001000000010000000100000001000000010),
+    Bitboard(0b10000000100000001000000010000000100000001000000010000000100),
+    Bitboard(0b100000001000000010000000100000001000000010000000100000001000),
+    Bitboard(0b1000000010000000100000001000000010000000100000001000000010000),
+    Bitboard(0b10000000100000001000000010000000100000001000000010000000100000),
+    Bitboard(0b100000001000000010000000100000001000000010000000100000001000000),
+    Bitboard(0b1000000010000000100000001000000010000000100000001000000010000000),
+];
+const RANK_BB: [Bitboard; 8] = [
+    Bitboard(0b11111111),
+    Bitboard(0b1111111100000000),
+    Bitboard(0b111111110000000000000000),
+    Bitboard(0b11111111000000000000000000000000),
+    Bitboard(0b1111111100000000000000000000000000000000),
+    Bitboard(0b111111110000000000000000000000000000000000000000),
+    Bitboard(0b11111111000000000000000000000000000000000000000000000000),
+    Bitboard(0b1111111100000000000000000000000000000000000000000000000000000000),
+];
+const ADJACENT_FILES_BB: [Bitboard; 8] = [
+    Bitboard(0b1000000010000000100000001000000010000000100000001000000010),
+    Bitboard(0b10100000101000001010000010100000101000001010000010100000101),
+    Bitboard(0b101000001010000010100000101000001010000010100000101000001010),
+    Bitboard(0b1010000010100000101000001010000010100000101000001010000010100),
+    Bitboard(0b10100000101000001010000010100000101000001010000010100000101000),
+    Bitboard(0b101000001010000010100000101000001010000010100000101000001010000),
+    Bitboard(0b1010000010100000101000001010000010100000101000001010000010100000),
+    Bitboard(0b100000001000000010000000100000001000000010000000100000001000000),
+];
+const FORWARD_RANKS_BB: [[Bitboard; 8]; 2] = [
+    [
+        Bitboard(0b1111111111111111111111111111111111111111111111111111111100000000),
+        Bitboard(0b1111111111111111111111111111111111111111111111110000000000000000),
+        Bitboard(0b1111111111111111111111111111111111111111000000000000000000000000),
+        Bitboard(0b1111111111111111111111111111111100000000000000000000000000000000),
+        Bitboard(0b1111111111111111111111110000000000000000000000000000000000000000),
+        Bitboard(0b1111111111111111000000000000000000000000000000000000000000000000),
+        Bitboard(0b1111111100000000000000000000000000000000000000000000000000000000),
+        Bitboard(0b0),
+    ],
+    [
+        Bitboard(0b0),
+        Bitboard(0b11111111),
+        Bitboard(0b1111111111111111),
+        Bitboard(0b111111111111111111111111),
+        Bitboard(0b11111111111111111111111111111111),
+        Bitboard(0b1111111111111111111111111111111111111111),
+        Bitboard(0b111111111111111111111111111111111111111111111111),
+        Bitboard(0b11111111111111111111111111111111111111111111111111111111),
+    ],
+];
 static mut BETWEEN_BB: [[Bitboard; 64]; 64] = [[Bitboard(0); 64]; 64];
 static mut LINE_BB: [[Bitboard; 64]; 64] = [[Bitboard(0); 64]; 64];
 static mut DISTANCE_RING_BB: [[Bitboard; 8]; 64] = [[Bitboard(0); 8]; 64];
@@ -77,6 +200,7 @@ static mut PASSED_PAWN_MASK: [[Bitboard; 64]; 2] = [[Bitboard(0); 64]; 2];
 static mut PAWN_ATTACK_SPAN: [[Bitboard; 64]; 2] = [[Bitboard(0); 64]; 2];
 static mut PSEUDO_ATTACKS: [[Bitboard; 64]; 8] = [[Bitboard(0); 64]; 8];
 static mut PAWN_ATTACKS: [[Bitboard; 64]; 2] = [[Bitboard(0); 64]; 2];
+
 
 struct Magics {
     masks: [Bitboard; 64],
@@ -277,7 +401,7 @@ fn attacks_bb_rook(s: Square, occupied: Bitboard) -> Bitboard {
 
 impl From<Square> for Bitboard {
     fn from(s: Square) -> Self {
-        unsafe { SQUARE_BB[s.0 as usize] }
+        SQUARE_BB[s.0 as usize]
     }
 }
 
@@ -291,7 +415,7 @@ impl Square {
     }
 
     pub fn rank_bb(self) -> Bitboard {
-        unsafe { RANK_BB[self.rank() as usize] }
+        RANK_BB[self.rank() as usize]
     }
 }
 
@@ -409,8 +533,8 @@ pub fn more_than_one(b: Bitboard) -> bool {
     (b.0 & u64::wrapping_sub(b.0, 1)) != 0
 }
 
-pub fn lsb(b: Bitboard) -> Square {
-    debug_assert!(b != 0);
+pub const fn lsb(b: Bitboard) -> Square {
+    //debug_assert!(b != 0);
     Square(u64::trailing_zeros(b.0))
 }
 
@@ -446,8 +570,8 @@ impl Iterator for Bitboard {
 
 // file_bb() return a bitboard representing all the squares on the given file.
 
-pub fn file_bb(f: File) -> Bitboard {
-    unsafe { FILE_BB[f as usize] }
+pub const fn file_bb(f: File) -> Bitboard {
+    FILE_BB[f as usize]
 }
 
 
@@ -455,7 +579,7 @@ pub fn file_bb(f: File) -> Bitboard {
 // the adjacent files of the given one.
 
 pub fn adjacent_files_bb(f: File) -> Bitboard {
-    unsafe { ADJACENT_FILES_BB[f as usize] }
+    ADJACENT_FILES_BB[f as usize]
 }
 
 // between_bb() returns a bitboard representing all the squares between the
@@ -473,7 +597,7 @@ pub fn between_bb(s1: Square, s2: Square) -> Bitboard {
 // squares on ranks 1 and 2.
 
 pub fn forward_ranks_bb(c: Color, s: Square) -> Bitboard {
-    unsafe { FORWARD_RANKS_BB[c.0 as usize][s.rank() as usize] }
+    FORWARD_RANKS_BB[c.0 as usize][s.rank() as usize]
 }
 
 // forward_file_bb() returns a bitboard representing all the squares along
@@ -541,35 +665,11 @@ impl Distance for Square {
 // init() initializes various bitboard tables. It is called at startup.
 
 pub fn init() {
-    for s in ALL_SQUARES {
-        unsafe { SQUARE_BB[s.0 as usize] = Bitboard(1u64) << (s.0 as i32); }
-    }
+    //println!("Bitboard(0b{:b}),", value.0);
 
-    for f in 0..8 {
-        unsafe { FILE_BB[f as usize] = FILEA_BB << f; }
-    }
 
-    for r in 0..8 {
-        unsafe { RANK_BB[r as usize] = RANK1_BB << (8 * r); }
-    }
 
-    for f in 0..8 {
-        unsafe {
-            let left = if f > FILE_A { file_bb(f - 1) } else { Bitboard(0) };
-            let right = if f < FILE_H { file_bb(f + 1) } else { Bitboard(0) };
-            ADJACENT_FILES_BB[f as usize] = left | right;
-        }
-    }
 
-    for r in 0..7 {
-        unsafe {
-            FORWARD_RANKS_BB[BLACK.0 as usize][(r + 1) as usize] =
-                FORWARD_RANKS_BB[BLACK.0 as usize][r as usize]
-                    | RANK_BB[r as usize];
-            FORWARD_RANKS_BB[WHITE.0 as usize][r as usize] =
-                !FORWARD_RANKS_BB[BLACK.0 as usize][(r + 1) as usize];
-        }
-    }
 
     for &c in [WHITE, BLACK].iter() {
         for s in ALL_SQUARES {

@@ -32,7 +32,7 @@ fn main() {
     ucioption::init();
     psqt::init();
     bitboard::init();
-    position::zobrist::init();
+    //position::zobrist::init();
     bitbases::init();
     search::init();
     pawns::init();
