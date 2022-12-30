@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-#[allow(dead_code)]
+
 #[derive(Clone, Copy)]
 pub struct Prng(u64);
 
@@ -19,11 +19,11 @@ pub struct Prng(u64);
 //   <http://vigna.di.unimi.it/ftp/papers/xorshift.pdf>
 
 impl Prng {
-    pub fn _new(seed: u64) -> Prng {
+    pub fn new(seed: u64) -> Prng {
         Prng(seed)
     }
 
-    pub fn _rand64(&mut self) -> u64 {
+    pub fn rand64(&mut self) -> u64 {
         self.0 ^= self.0 >> 12;
         self.0 ^= self.0 << 25;
         self.0 ^= self.0 >> 27;
@@ -34,7 +34,7 @@ impl Prng {
 pub fn engine_info(to_uci: bool) -> String {
 //    let months = &"Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec";
 
-    format!("Rustfish 10 polish-reduce-unsafe dev{}",
+    format!("Rustfish 10 dev{}",
             if to_uci {
                 "\nid author T. Romstad, m. Costalba, J. Kiiski, G. Linscott"
             } else {
