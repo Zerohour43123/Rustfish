@@ -682,9 +682,9 @@ static mut PAWN_ENTRIES: GlobalVec<PawnEntry> =
 static mut TB_MAP: *mut HashMap<Key, TbHashEntry> =
     0 as *mut HashMap<Key, TbHashEntry>;
 
-static mut NUM_WDL: u32 = 0;
-static mut NUM_DTM: u32 = 0;
-static mut NUM_DTZ: u32 = 0;
+static NUM_WDL: AtomicU32 = AtomicU32::new(0);
+static NUM_DTM: AtomicU32 = AtomicU32::new(0);
+static NUM_DTZ: AtomicU32 = AtomicU32::new(0);
 
 pub fn init_tb(name: &str) {
     if !test_tb(name, WDL_SUFFIX) {
@@ -822,9 +822,9 @@ pub fn init_tb(name: &str) {
 
     unsafe {
         TB_MAP = Box::into_raw(map);
-        NUM_WDL += 1;
-        NUM_DTM += has_dtm as u32;
-        NUM_DTZ += has_dtz as u32;
+        NUM_WDL.fetch_add(1, Ordering::Release);
+        NUM_DTM.fetch_add(has_dtm as u32, Ordering::Release);
+        NUM_DTZ.fetch_add(has_dtz as u32, Ordering::Release);
     }
 }
 
@@ -838,18 +838,18 @@ pub fn free() {
 
 pub fn init(path: String) {
     const P: [char; 5] = ['Q', 'R', 'B', 'N', 'P'];
-    static mut INITIALIZED: bool = false;
+    static mut INITIALIZED: AtomicBool = AtomicBool::new(false);
 
     // Restrict engine to 5-piece TBs on platforms with 32-bit address space
     let max5 = std::mem::size_of::<usize>() < 8;
 
     unsafe {
-        if !INITIALIZED {
+        if !INITIALIZED.load(Ordering::Acquire) {
             init_indices();
             PIECE_ENTRIES.init(if max5 { 84 } else { 254 });
             PAWN_ENTRIES.init(if max5 { 61 } else { 256 });
             TB_MAP = Box::into_raw(Box::default());
-            INITIALIZED = true;
+            INITIALIZED.store(true, Ordering::Release);
         }
 
         if PATH.is_some() {
@@ -858,9 +858,9 @@ pub fn init(path: String) {
             TB_MAP = Box::into_raw(Box::default());
             PIECE_ENTRIES.reset();
             PAWN_ENTRIES.reset();
-            NUM_WDL = 0;
-            NUM_DTM = 0;
-            NUM_DTZ = 0;
+            NUM_WDL.store(0, Ordering::Release);
+            NUM_DTM.store(0, Ordering::Release);
+            NUM_DTZ.store(0, Ordering::Release);
             MAX_CARDINALITY.store(0, Ordering::Release);
             MAX_CARDINALITY_DTM.store(0, Ordering::Release);
         }
@@ -981,7 +981,7 @@ pub fn init(path: String) {
     }
 
     println!("info string Found {} WDL, {} DTM and {} DTZ tablebase files.",
-             unsafe { NUM_WDL }, unsafe { NUM_DTM }, unsafe { NUM_DTZ });
+             NUM_WDL.load(Ordering::Acquire), NUM_DTM.load(Ordering::Acquire), NUM_DTZ.load(Ordering::Acquire));
 }
 
 // place k like pieces on n squares

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std;
+use std::sync::atomic::{AtomicU8, AtomicUsize, Ordering};
 
 use types::*;
 
@@ -85,19 +86,17 @@ struct Cluster {
     _padding: [u8; 2], // Align to a divisor of the cache line size
 }
 
-static mut CLUSTER_COUNT: usize = 0;
+static CLUSTER_COUNT: AtomicUsize = AtomicUsize::new(0);
 static mut TABLE: *mut Cluster = 0 as *mut Cluster;
-static mut TABLE_CAP: usize = 0;
-static mut GENERATION8: u8 = 0;
+static TABLE_CAP: AtomicUsize = AtomicUsize::new(0);
+static GENERATION8: AtomicU8 = AtomicU8::new(0);
 
 pub fn new_search() {
-    unsafe {
-        GENERATION8 += 4; // Lower two bits are used by bound
-    }
+    GENERATION8.fetch_add(4, Ordering::Release); // Lower two bits are used by bound
 }
 
 pub fn generation() -> u8 {
-    unsafe { GENERATION8 }
+    GENERATION8.load(Ordering::Acquire)
 }
 
 // The lowest order bits of the key are used to get the index of the cluster
@@ -105,7 +104,7 @@ fn cluster(key: Key) -> &'static mut Cluster {
     unsafe {
         let p: *mut Cluster =
             TABLE.offset((((key.0 as u32 as u64) *
-                (CLUSTER_COUNT as u64)) >> 32) as isize);
+                (CLUSTER_COUNT.load(Ordering::Acquire) as u64)) >> 32) as isize);
         let c: &'static mut Cluster = &mut *p;
         c
     }
@@ -120,17 +119,17 @@ pub fn resize(mb_size: usize) {
         mb_size * 1024 * 1024 / std::mem::size_of::<Cluster>();
 
     unsafe {
-        if new_cluster_count == CLUSTER_COUNT {
+        if new_cluster_count == CLUSTER_COUNT.load(Ordering::Acquire) {
             return;
         }
 
         free();
 
-        CLUSTER_COUNT = new_cluster_count;
+        CLUSTER_COUNT.store(new_cluster_count, Ordering::Release);
 
         let mut v: Vec<Cluster> = Vec::with_capacity(new_cluster_count);
         TABLE = v.as_mut_ptr();
-        TABLE_CAP = v.capacity();
+        TABLE_CAP.store(v.capacity(), Ordering::Release);
         // forget in order to prevent deallocation by dropping
         std::mem::forget(v);
     }
@@ -141,7 +140,7 @@ pub fn resize(mb_size: usize) {
 pub fn free() {
     unsafe {
         if !TABLE.is_null() {
-            let _ = Vec::from_raw_parts(TABLE, 0, TABLE_CAP);
+            let _ = Vec::from_raw_parts(TABLE, 0, TABLE_CAP.load(Ordering::Acquire));
             // deallocate by dropping
         }
     }
@@ -153,7 +152,7 @@ pub fn free() {
 
 pub fn clear() {
     let tt_slice = unsafe {
-        std::slice::from_raw_parts_mut(TABLE, CLUSTER_COUNT)
+        std::slice::from_raw_parts_mut(TABLE, CLUSTER_COUNT.load(Ordering::Acquire))
     };
 
     for cluster in tt_slice.iter_mut() {
