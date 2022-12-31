@@ -47,5 +47,4 @@ fn main() {
     threads::free();
     tb::free();
     tt::free();
-    ucioption::free();
 }
