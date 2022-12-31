@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std;
+use std::sync::RwLock;
 
 use bitboard::*;
 use material;
@@ -10,10 +11,10 @@ use types::*;
 
 pub const TEMPO: Value = Value(20);
 
-pub static mut CONTEMPT: Score = Score::ZERO;
+pub static CONTEMPT: RwLock<Score> = RwLock::new(Score::ZERO);
 
 fn contempt() -> Score {
-    unsafe { CONTEMPT }
+    *CONTEMPT.read().unwrap()
 }
 
 //const CENTER: Bitboard = (FILED_BB | FILEE_BB) & (RANK4_BB | RANK5_BB);

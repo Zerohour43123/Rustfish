@@ -8,7 +8,7 @@ use std::time::Instant;
 
 use bitboard::*;
 use evaluate;
-use evaluate::evaluate;
+use evaluate::{CONTEMPT, evaluate};
 use movegen::*;
 use movepick::*;
 use position::*;
@@ -711,9 +711,9 @@ const REDUCTIONS: [[[[i32; 64]; 64]; 2]; 2] =
 ;
 
 fn reduction<PvNode: NodeType>(i: bool, d: Depth, mn: i32) -> Depth {
-        REDUCTIONS[PvNode::NT][i as usize]
-            [std::cmp::min(d / ONE_PLY, 63) as usize]
-            [std::cmp::min(mn, 63) as usize] * ONE_PLY
+    REDUCTIONS[PvNode::NT][i as usize]
+        [std::cmp::min(d / ONE_PLY, 63) as usize]
+        [std::cmp::min(mn, 63) as usize] * ONE_PLY
 }
 
 fn futility_move_counts(i: bool, d: Depth) -> i32 {
@@ -755,29 +755,28 @@ fn perft<Root: Bool>(pos: &mut Position, depth: Depth) -> u64 {
 // search::init() is called during startup to initialize various lookup tables
 
 
-
 pub fn _generate_red_move_count() {
     let mut futility_move_counts: [[i32; 16]; 2] = [[0; 16]; 2];
-    let mut reductions : [[[[i32; 64]; 64]; 2]; 2] = [[[[0; 64]; 64]; 2]; 2];
+    let mut reductions: [[[[i32; 64]; 64]; 2]; 2] = [[[[0; 64]; 64]; 2]; 2];
 
 
     for imp in 0..2 {
-            for d in 1..64 {
-                for mc in 1..64 {
-                    let r = (d as f64).ln() * (mc as f64).ln() / 1.95;
+        for d in 1..64 {
+            for mc in 1..64 {
+                let r = (d as f64).ln() * (mc as f64).ln() / 1.95;
 
-                    reductions[NonPv::NT][imp][d][mc] = r.round() as i32;
-                    reductions[Pv::NT][imp][d][mc] = std::cmp::max(
-                        reductions[NonPv::NT][imp][d][mc] - 1, 0);
+                reductions[NonPv::NT][imp][d][mc] = r.round() as i32;
+                reductions[Pv::NT][imp][d][mc] = std::cmp::max(
+                    reductions[NonPv::NT][imp][d][mc] - 1, 0);
 
-                    if imp == 0
-                        && reductions[NonPv::NT][imp][d][mc] >= 2
-                    {
-                        reductions[NonPv::NT][imp][d][mc] += 1;
-                    }
+                if imp == 0
+                    && reductions[NonPv::NT][imp][d][mc] >= 2
+                {
+                    reductions[NonPv::NT][imp][d][mc] += 1;
                 }
             }
         }
+    }
 
 
     for d in 0..16 {
@@ -846,7 +845,7 @@ pub fn mainthread_search(pos: &mut Position, th: &threads::ThreadCtrl) {
         && limits().depth == 0
         && pos.root_moves[0].pv[0] != Move::NONE
     {
-        let common = th.common.lock().unwrap();
+        let common = th.common.read().unwrap();
         let result = &mut common.result.lock().unwrap();
         if result.score > pos.root_moves[0].score
             && (result.depth >= pos.completed_depth
@@ -930,10 +929,9 @@ pub fn thread_search(pos: &mut Position, _th: &threads::ThreadCtrl) {
         }
     }
 
-    unsafe {
-        let contempt = Score::new(base_ct, base_ct / 2);
-        evaluate::CONTEMPT = if us == WHITE { contempt } else { -contempt };
-    }
+    let contempt = Score::new(base_ct, base_ct / 2);
+    *CONTEMPT.write().unwrap() = if us == WHITE { contempt } else { -contempt };
+
 
     let mut root_depth = Depth::ZERO;
 
@@ -1020,9 +1018,7 @@ pub fn thread_search(pos: &mut Position, _th: &threads::ThreadCtrl) {
                     Value::INFINITE);
                 let ct = base_ct + (if best_value > Value(500) { 50 } else if best_value < Value(-500) { -50 } else { best_value.0 / 10 });
                 let ct = Score::new(ct, ct / 2);
-                unsafe {
-                    evaluate::CONTEMPT = if us == WHITE { ct } else { -ct }
-                }
+                *CONTEMPT.write().unwrap() = if us == WHITE { ct } else { -ct }
             }
 
             // Start with a small aspiration window and, in the case of a fail

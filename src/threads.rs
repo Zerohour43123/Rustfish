@@ -41,7 +41,7 @@ pub struct CommonState {
 pub struct ThreadCtrl {
     pub idx: usize,
     pub state: Mutex<ThreadState>,
-    pub common: Mutex<CommonState>,
+    pub common: RwLock<CommonState>,
     pub cv: Condvar,
     pub nodes: AtomicU64,
     pub tb_hits: AtomicU64,
@@ -56,7 +56,7 @@ impl ThreadCtrl {
                 searching: true,
                 clear: false,
             }),
-            common: Mutex::new(CommonState {
+            common: RwLock::new(CommonState {
                 root_moves: Arc::new(Vec::new()),
                 pos_data: Arc::new(RwLock::new(PosData {
                     fen: String::new(),
@@ -78,8 +78,8 @@ impl ThreadCtrl {
 type Handlers = Vec<thread::JoinHandle<()>>;
 type Threads = Vec<Arc<ThreadCtrl>>;
 
-static mut HANDLERS: *mut Handlers = 0 as *mut Handlers;
-static mut THREADS: *mut Threads = 0 as *mut Threads;
+static HANDLERS: RwLock<Handlers> = RwLock::new(Handlers::new());
+static THREADS: RwLock<Threads> = RwLock::new(Threads::new());
 
 static STOP: AtomicBool = AtomicBool::new(false);
 static PONDER: AtomicBool = AtomicBool::new(false);
@@ -110,48 +110,30 @@ pub fn set_stop_on_ponderhit(b: bool) {
 }
 
 pub fn init(requested: usize) {
-    let handlers: Box<Handlers> = Box::default();
-    let threads: Box<Threads> = Box::default();
-    unsafe {
-        HANDLERS = Box::into_raw(handlers);
-        THREADS = Box::into_raw(threads);
-    }
-
     set(requested);
 }
 
-pub fn free() {
-    set(0);
-    unsafe {
-        drop(Box::from_raw(HANDLERS));
-        drop(Box::from_raw(THREADS));
-    }
-}
 
 pub fn set(requested: usize) {
-    let mut handlers = unsafe { Box::from_raw(HANDLERS) };
-    let mut threads = unsafe { Box::from_raw(THREADS) };
+    if let (Ok(mut handlers), Ok(mut threads)) = (HANDLERS.write(), THREADS.write()) {
+        while handlers.len() < requested {
+            let idx = handlers.len();
+            let (tx, rx) = channel();
+            // 16 MB stacks are now too small in debug mode, so use 32 MB stacks
+            let builder = thread::Builder::new().stack_size(32 * 1024 * 1024);
+            let handler = builder.spawn(move || run_thread(idx, tx)).unwrap();
+            let th = rx.recv().unwrap();
+            handlers.push(handler);
+            threads.push(th);
+        }
 
-    while handlers.len() < requested {
-        let idx = handlers.len();
-        let (tx, rx) = channel();
-        // 16 MB stacks are now too small in debug mode, so use 32 MB stacks
-        let builder = thread::Builder::new().stack_size(32 * 1024 * 1024);
-        let handler = builder.spawn(move || run_thread(idx, tx)).unwrap();
-        let th = rx.recv().unwrap();
-        handlers.push(handler);
-        threads.push(th);
+        while handlers.len() > requested {
+            let handler = handlers.pop().unwrap();
+            let th = threads.pop().unwrap();
+            wake_up(&th, true, false);
+            let _ = handler.join();
+        }
     }
-
-    while handlers.len() > requested {
-        let handler = handlers.pop().unwrap();
-        let th = threads.pop().unwrap();
-        wake_up(&th, true, false);
-        let _ = handler.join();
-    }
-
-    std::mem::forget(handlers);
-    std::mem::forget(threads);
 }
 
 fn run_thread(idx: usize, tx: Sender<Arc<ThreadCtrl>>) {
@@ -198,7 +180,7 @@ fn run_thread(idx: usize, tx: Sender<Arc<ThreadCtrl>>) {
             continue;
         }
         {
-            let common = th.common.lock().unwrap();
+            let common = th.common.read().unwrap();
             let pos_data = common.pos_data.read().unwrap();
             pos.init_states();
             pos.set(&pos_data.fen, ucioption::get_bool("UCI_Chess960"));
@@ -216,7 +198,7 @@ fn run_thread(idx: usize, tx: Sender<Arc<ThreadCtrl>>) {
             mainthread_search(&mut pos, &th);
         } else {
             thread_search(&mut pos, &th);
-            let lock = th.common.lock().unwrap();
+            let lock = th.common.read().unwrap();
             let result = &mut lock.result.lock().unwrap();
             if pos.root_moves[0].score > result.score
                 && (pos.completed_depth >= result.depth
@@ -241,147 +223,133 @@ fn wake_up(th: &ThreadCtrl, exit: bool, clear: bool)
 
 pub fn wake_up_slaves()
 {
-    let threads: Box<Threads> = unsafe { Box::from_raw(THREADS) };
-
-    for th in threads.iter() {
-        if th.idx != 0 {
-            wake_up(th, false, false);
+    if let Ok(threads) = THREADS.read() {
+        for th in threads.iter() {
+            if th.idx != 0 {
+                wake_up(th, false, false);
+            }
         }
     }
-
-    std::mem::forget(threads);
 }
 
 pub fn clear_search()
 {
-    let threads: Box<Threads> = unsafe { Box::from_raw(THREADS) };
-
-    for th in threads.iter() {
-        wake_up(th, false, true);
+    if let Ok(threads) = THREADS.read() {
+        for th in threads.iter() {
+            wake_up(th, false, true);
+        }
     }
-
-    std::mem::forget(threads);
 }
 
 pub fn wait_for_main()
 {
-    let threads: Box<Threads> = unsafe { Box::from_raw(THREADS) };
-
-    for th in threads.iter() {
-        if th.idx == 0 {
-            let mut state = th.state.lock().unwrap();
-            while state.searching {
-                state = th.cv.wait(state).unwrap();
+    if let Ok(threads) = THREADS.read() {
+        for th in threads.iter() {
+            if th.idx == 0 {
+                let mut state = th.state.lock().unwrap();
+                while state.searching {
+                    state = th.cv.wait(state).unwrap();
+                }
             }
         }
     }
-
-    std::mem::forget(threads);
 }
 
 pub fn wait_for_slaves()
 {
-    let threads: Box<Threads> = unsafe { Box::from_raw(THREADS) };
+    if let Ok(threads) = THREADS.read() {
+        for th in threads.iter() {
+            if th.idx != 0 {
+                let mut state = th.state.lock().unwrap();
+                while state.searching {
+                    state = th.cv.wait(state).unwrap();
+                }
+            }
+        }
+    }
+}
 
-    for th in threads.iter() {
-        if th.idx != 0 {
+pub fn wait_for_all()
+{
+    if let Ok(threads) = THREADS.read() {
+        for th in threads.iter() {
             let mut state = th.state.lock().unwrap();
             while state.searching {
                 state = th.cv.wait(state).unwrap();
             }
         }
     }
-
-    std::mem::forget(threads);
-}
-
-pub fn wait_for_all()
-{
-    let threads: Box<Threads> = unsafe { Box::from_raw(THREADS) };
-
-    for th in threads.iter() {
-        let mut state = th.state.lock().unwrap();
-        while state.searching {
-            state = th.cv.wait(state).unwrap();
-        }
-    }
-
-    std::mem::forget(threads);
 }
 
 pub fn start_thinking(
     pos: &mut Position, pos_data: &Arc<RwLock<PosData>>, limits: &LimitsType,
     searchmoves: Vec<Move>, ponder_mode: bool,
 ) {
-    let threads: Box<Threads> = unsafe { Box::from_raw(THREADS) };
+    if let Ok(threads) = THREADS.read() {
+        wait_for_main();
 
-    wait_for_main();
+        set_stop_on_ponderhit(false);
+        set_stop(false);
+        set_ponder(ponder_mode);
 
-    set_stop_on_ponderhit(false);
-    set_stop(false);
-    set_ponder(ponder_mode);
-
-    unsafe {
-        LIMITS = (*limits).clone();
-    }
-
-    let mut root_moves = RootMoves::new();
-    for m in MoveList::new::<Legal>(pos) {
-        if searchmoves.is_empty()
-            || searchmoves.iter().any(|&x| x == m)
-        {
-            root_moves.push(RootMove::new(m));
+        unsafe {
+            LIMITS = (*limits).clone();
         }
+
+        let mut root_moves = RootMoves::new();
+        for m in MoveList::new::<Legal>(pos) {
+            if searchmoves.is_empty()
+                || searchmoves.iter().any(|&x| x == m)
+            {
+                root_moves.push(RootMove::new(m));
+            }
+        }
+
+        tb::read_options();
+        tb::rank_root_moves(pos, &mut root_moves);
+
+        let root_moves = Arc::new(root_moves);
+        let result = Arc::new(Mutex::new(SearchResult {
+            depth: Depth::ZERO,
+            score: -Value::INFINITE,
+            pv: Vec::new(),
+        }));
+
+        for th in threads.iter() {
+            th.nodes.store(0, Ordering::Release);
+            th.tb_hits.store(0, Ordering::Release);
+            let mut common = th.common.write().unwrap();
+            common.root_moves = root_moves.clone();
+            common.pos_data = pos_data.clone();
+            common.result = result.clone();
+        }
+
+        wake_up(&threads[0], false, false);
     }
-
-    tb::read_options();
-    tb::rank_root_moves(pos, &mut root_moves);
-
-    let root_moves = Arc::new(root_moves);
-    let result = Arc::new(Mutex::new(SearchResult {
-        depth: Depth::ZERO,
-        score: -Value::INFINITE,
-        pv: Vec::new(),
-    }));
-
-    for th in threads.iter() {
-        th.nodes.store(0, Ordering::Release);
-        th.tb_hits.store(0, Ordering::Release);
-        let mut common = th.common.lock().unwrap();
-        common.root_moves = root_moves.clone();
-        common.pos_data = pos_data.clone();
-        common.result = result.clone();
-    }
-
-    wake_up(&threads[0], false, false);
-
-    std::mem::forget(threads);
 }
 
+// TODO make sum functional style
+
 pub fn nodes_searched() -> u64 {
-    let threads: Box<Threads> = unsafe { Box::from_raw(THREADS) };
+    if let Ok(threads) = THREADS.read() {
+        let mut nodes = 0;
 
-    let mut nodes = 0;
-
-    for th in threads.iter() {
-        nodes += th.nodes.load(Ordering::Acquire);
+        for th in threads.iter() {
+            nodes += th.nodes.load(Ordering::Acquire);
+        }
+        return nodes;
     }
-
-    std::mem::forget(threads);
-
-    nodes
+    0
 }
 
 pub fn tb_hits() -> u64 {
-    let threads: Box<Threads> = unsafe { Box::from_raw(THREADS) };
+    if let Ok(threads) = THREADS.read() {
+        let mut tb_hits = 0;
 
-    let mut tb_hits = 0;
-
-    for th in threads.iter() {
-        tb_hits += th.tb_hits.load(Ordering::Acquire);
+        for th in threads.iter() {
+            tb_hits += th.tb_hits.load(Ordering::Acquire);
+        }
+        return tb_hits;
     }
-
-    std::mem::forget(threads);
-
-    tb_hits
+    0
 }

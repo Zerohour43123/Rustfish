@@ -43,8 +43,5 @@ fn main() {
         let _ = ui_thread.join();
     }
     uci::cmd_loop();
-
-    threads::free();
     tb::free();
-    tt::free();
 }

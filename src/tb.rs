@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::slice;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Mutex;
+use std::sync::{Mutex, RwLock};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use memmap::*;
 
@@ -21,53 +21,51 @@ use ucioption;
 
 const TB_PIECES: usize = 7;
 
-static mut MAX_CARDINALITY: u32 = 0;
-static mut MAX_CARDINALITY_DTM: u32 = 0;
-static mut CARDINALITY: u32 = 0;
-static mut CARDINALITY_DTM: u32 = 0;
-static mut ROOT_IN_TB: bool = false;
-static mut USE_RULE_50: bool = true;
-static mut PROBE_DEPTH: Depth = Depth(0);
+static MAX_CARDINALITY: AtomicU32 = AtomicU32::new(0);
+static MAX_CARDINALITY_DTM: AtomicU32 = AtomicU32::new(0);
+static CARDINALITY: AtomicU32 = AtomicU32::new(0);
+static CARDINALITY_DTM: AtomicU32 = AtomicU32::new(0);
+static ROOT_IN_TB: AtomicBool = AtomicBool::new(false);
+static USE_RULE_50: AtomicBool = AtomicBool::new(true);
+static PROBE_DEPTH: RwLock<Depth> = RwLock::new(Depth(0));
 
 pub fn read_options() {
-    unsafe {
-        USE_RULE_50 = ucioption::get_bool("Syzygy50MoveRule");
-        PROBE_DEPTH = ucioption::get_i32("SyzygyProbeDepth") * ONE_PLY;
-        CARDINALITY = ucioption::get_i32("SyzygyProbeLimit") as u32;
-        if CARDINALITY > MAX_CARDINALITY {
-            CARDINALITY = MAX_CARDINALITY;
-            PROBE_DEPTH = Depth::ZERO;
-        }
-        CARDINALITY_DTM = if ucioption::get_bool("SyzygyUseDTM") {
-            std::cmp::min(CARDINALITY, MAX_CARDINALITY_DTM)
-        } else {
-            0
-        };
+    USE_RULE_50.store(ucioption::get_bool("Syzygy50MoveRule"), Ordering::Release);
+    *PROBE_DEPTH.write().unwrap() = ucioption::get_i32("SyzygyProbeDepth") * ONE_PLY;
+    CARDINALITY.store(ucioption::get_i32("SyzygyProbeLimit") as u32, Ordering::Release);
+    if CARDINALITY.load(Ordering::Acquire) > MAX_CARDINALITY.load(Ordering::Acquire) {
+        CARDINALITY.store(MAX_CARDINALITY.load(Ordering::Acquire), Ordering::Release);
+        *PROBE_DEPTH.write().unwrap() = Depth::ZERO;
     }
+    CARDINALITY_DTM.store(if ucioption::get_bool("SyzygyUseDTM") {
+        std::cmp::min(CARDINALITY.load(Ordering::Acquire), MAX_CARDINALITY_DTM.load(Ordering::Acquire))
+    } else {
+        0
+    }, Ordering::Release);
 }
 
 pub fn max_cardinality() -> u32 {
-    unsafe { MAX_CARDINALITY }
+    MAX_CARDINALITY.load(Ordering::Acquire)
 }
 
 pub fn cardinality() -> u32 {
-    unsafe { CARDINALITY }
+    CARDINALITY.load(Ordering::Acquire)
 }
 
 pub fn cardinality_dtm() -> u32 {
-    unsafe { CARDINALITY_DTM }
+    CARDINALITY_DTM.load(Ordering::Acquire)
 }
 
 pub fn root_in_tb() -> bool {
-    unsafe { ROOT_IN_TB }
+    ROOT_IN_TB.load(Ordering::Acquire)
 }
 
 pub fn use_rule_50() -> bool {
-    unsafe { USE_RULE_50 }
+    USE_RULE_50.load(Ordering::Acquire)
 }
 
 pub fn probe_depth() -> Depth {
-    unsafe { PROBE_DEPTH }
+    *PROBE_DEPTH.read().unwrap()
 }
 
 struct EncInfo {
@@ -716,14 +714,13 @@ pub fn init_tb(name: &str) {
     let symmetric = key == key2;
 
     let num = pcs.iter().sum::<i32>() as u32;
-    unsafe {
-        if num > MAX_CARDINALITY {
-            MAX_CARDINALITY = num;
-        }
-        if has_dtm && num > MAX_CARDINALITY_DTM {
-            MAX_CARDINALITY_DTM = num;
-        }
+    if num > MAX_CARDINALITY.load(Ordering::Acquire) {
+        MAX_CARDINALITY.store(num, Ordering::Release);
     }
+    if has_dtm && num > MAX_CARDINALITY_DTM.load(Ordering::Acquire) {
+        MAX_CARDINALITY_DTM.store(num, Ordering::Release);
+    }
+
 
     let mut map = unsafe { Box::from_raw(TB_MAP) };
 
@@ -864,8 +861,8 @@ pub fn init(path: String) {
             NUM_WDL = 0;
             NUM_DTM = 0;
             NUM_DTZ = 0;
-            MAX_CARDINALITY = 0;
-            MAX_CARDINALITY_DTM = 0;
+            MAX_CARDINALITY.store(0, Ordering::Release);
+            MAX_CARDINALITY_DTM.store(0, Ordering::Release);
         }
     }
 
@@ -2085,9 +2082,7 @@ pub fn rank_root_moves(pos: &mut Position, root_moves: &mut RootMoves) {
         // Probe during search only if neither DTM nor DTZ is available
         // and we are winning.
         if dtm_available || dtz_available || root_moves[0].tb_rank <= 0 {
-            unsafe {
-                CARDINALITY = 0;
-            }
+            CARDINALITY.store(0, Ordering::Release);
         }
     } else {
         // Ranking was not successful, clean up
@@ -2096,9 +2091,7 @@ pub fn rank_root_moves(pos: &mut Position, root_moves: &mut RootMoves) {
         }
     }
 
-    unsafe {
-        ROOT_IN_TB = root_in_tb;
-    }
+    ROOT_IN_TB.store(root_in_tb, Ordering::Release);
 }
 
 const OFF_DIAG: [i8; 64] = [
