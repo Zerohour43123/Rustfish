@@ -20,13 +20,6 @@ macro_rules! bitboard {
 }
 
 
-pub const fn pop_lsb_const(mut b: Bitboard) -> Square {
-    let s = lsb(b);
-    b.0 &= u64::wrapping_sub(b.0, 1);
-    s
-}
-
-
 // shift() moves a bitboard one step along direction D. Mainly for pawns.
 
 impl Bitboard {
@@ -46,9 +39,6 @@ impl Bitboard {
         self.0.count_ones()
     }
 
-    const fn shl_const(self, rhs: i32) -> Self {
-        Bitboard(self.0 << rhs)
-    }
 }
 
 pub const ALL_SQUARES: Bitboard = Bitboard(!0u64);
@@ -1225,6 +1215,94 @@ impl Distance for Square {
 // init() initializes various bitboard tables. It is called at startup.
 
 pub fn init() {
+    /*
+       for s in ALL_SQUARES {
+        unsafe { SQUARE_BB[s.0 as usize] = Bitboard(1u64) << (s.0 as i32); }
+    }
+
+    for f in 0..8 {
+        unsafe { FILE_BB[f as usize] = FILEA_BB << f; }
+    }
+
+    for r in 0..8 {
+        unsafe { RANK_BB[r as usize] = RANK1_BB << (8 * r); }
+    }
+
+    for f in 0..8 {
+        unsafe {
+            let left = if f > FILE_A { file_bb(f - 1) } else { Bitboard(0) };
+            let right = if f < FILE_H { file_bb(f + 1) } else { Bitboard(0) };
+            ADJACENT_FILES_BB[f as usize] = left | right;
+        }
+    }
+
+    for r in 0..7 {
+        unsafe {
+            FORWARD_RANKS_BB[BLACK.0 as usize][(r + 1) as usize] =
+                FORWARD_RANKS_BB[BLACK.0 as usize][r as usize]
+                    | RANK_BB[r as usize];
+            FORWARD_RANKS_BB[WHITE.0 as usize][r as usize] =
+                !FORWARD_RANKS_BB[BLACK.0 as usize][(r + 1) as usize];
+        }
+    }
+
+    for &c in [WHITE, BLACK].iter() {
+        for s in ALL_SQUARES {
+            unsafe {
+                FORWARD_FILE_BB[c.0 as usize][s.0 as usize] =
+                    FORWARD_RANKS_BB[c.0 as usize][s.rank() as usize]
+                        & FILE_BB[s.file() as usize];
+                PAWN_ATTACK_SPAN[c.0 as usize][s.0 as usize] =
+                    FORWARD_RANKS_BB[c.0 as usize][s.rank() as usize]
+                        & ADJACENT_FILES_BB[s.file() as usize];
+                PASSED_PAWN_MASK[c.0 as usize][s.0 as usize] =
+                    FORWARD_FILE_BB[c.0 as usize][s.0 as usize]
+                        | PAWN_ATTACK_SPAN[c.0 as usize][s.0 as usize];
+            }
+        }
+    }
+
+    for s1 in ALL_SQUARES {
+        for s2 in ALL_SQUARES {
+            if s1 != s2 {
+                unsafe {
+                    let dist =
+                        std::cmp::max(File::distance(s1.file(), s2.file()),
+                                      Rank::distance(s1.rank(), s2.rank()));
+                    SQUARE_DISTANCE[s1.0 as usize][s2.0 as usize] = dist;
+                    DISTANCE_RING_BB[s1.0 as usize][dist as usize - 1] |= s2;
+                }
+            }
+        }
+    }
+
+    for &c in [WHITE, BLACK].iter() {
+        for &pt in [PAWN, KNIGHT, KING].iter() {
+            for s in ALL_SQUARES {
+                let steps: &[i32] = match pt {
+                    PAWN => &[7, 9],
+                    KNIGHT => &[6, 10, 15, 17],
+                    _ => &[1, 7, 8, 9]
+                };
+                for &d in steps.iter() {
+                    let to = s
+                        + if c == WHITE { Direction(d) } else { -Direction(d) };
+                    if to.is_ok() && Square::distance(s, to) < 3 {
+                        unsafe {
+                            if pt == PAWN {
+                                PAWN_ATTACKS[c.0 as usize][s.0 as usize] |= to;
+                            } else {
+                                PSEUDO_ATTACKS[pt.0 as usize][s.0 as usize] |=
+                                    to;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+     */
     let rook_dirs = [NORTH, EAST, SOUTH, WEST];
     let bishop_dirs = [NORTH_EAST, SOUTH_EAST, SOUTH_WEST, NORTH_WEST];
 

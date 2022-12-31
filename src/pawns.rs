@@ -271,6 +271,9 @@ pub fn init() {
 // pawns::probe() looks up the current position's pawn configuration in the
 // pawn hash table. If it is not found, it is computed and stored in the table.
 
+// TODO change this to COW ptr??
+
+
 pub fn probe(pos: &Position) -> &mut Entry {
     let key = pos.pawn_key();
     let e = pos.pawns_table[(key.0 & 16383) as usize].get();

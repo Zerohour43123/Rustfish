@@ -5,43 +5,42 @@ use std;
 use bitbases;
 use bitboard::*;
 use movegen::*;
-use position::Position;
-use position::zobrist;
+use position::{Position, zobrist};
 use types::*;
 
 pub type EvalFn = fn(&Position, Color) -> Value;
 pub type ScaleFn = fn(&Position, Color) -> ScaleFactor;
 
-struct EvalInit {
+struct _EvalInit {
     func: EvalFn,
     code: &'static str,
 }
 
-const EVAL_INITS: [EvalInit; 8] = [
-    EvalInit { func: evaluate_kpk, code: "KPk" },
-    EvalInit { func: evaluate_knnk, code: "KNNk" },
-    EvalInit { func: evaluate_kbnk, code: "KBNk" },
-    EvalInit { func: evaluate_krkp, code: "KRkp" },
-    EvalInit { func: evaluate_krkb, code: "KRkb" },
-    EvalInit { func: evaluate_krkn, code: "KRkn" },
-    EvalInit { func: evaluate_kqkp, code: "KQkp" },
-    EvalInit { func: evaluate_kqkr, code: "KQkr" },
+const _EVAL_INITS: [_EvalInit; 8] = [
+    _EvalInit { func: evaluate_kpk, code: "KPk" },
+    _EvalInit { func: evaluate_knnk, code: "KNNk" },
+    _EvalInit { func: evaluate_kbnk, code: "KBNk" },
+    _EvalInit { func: evaluate_krkp, code: "KRkp" },
+    _EvalInit { func: evaluate_krkb, code: "KRkb" },
+    _EvalInit { func: evaluate_krkn, code: "KRkn" },
+    _EvalInit { func: evaluate_kqkp, code: "KQkp" },
+    _EvalInit { func: evaluate_kqkr, code: "KQkr" },
 ];
 
-struct ScaleInit {
+struct _ScaleInit {
     func: ScaleFn,
     code: &'static str,
 }
 
-const SCALE_INITS: [ScaleInit; 8] = [
-    ScaleInit { func: scale_knpk, code: "KNPk" },
-    ScaleInit { func: scale_knpkb, code: "KNPkb" },
-    ScaleInit { func: scale_krpkr, code: "KRPkr" },
-    ScaleInit { func: scale_krpkb, code: "KRPkb" },
-    ScaleInit { func: scale_kbpkb, code: "KBPkb" },
-    ScaleInit { func: scale_kbpkn, code: "KBPkn" },
-    ScaleInit { func: scale_kbppkb, code: "KBPPkb" },
-    ScaleInit { func: scale_krppkrp, code: "KRPPkrp" },
+const _SCALE_INITS: [_ScaleInit; 8] = [
+    _ScaleInit { func: scale_knpk, code: "KNPk" },
+    _ScaleInit { func: scale_knpkb, code: "KNPkb" },
+    _ScaleInit { func: scale_krpkr, code: "KRPkr" },
+    _ScaleInit { func: scale_krpkb, code: "KRPkb" },
+    _ScaleInit { func: scale_kbpkb, code: "KBPkb" },
+    _ScaleInit { func: scale_kbpkn, code: "KBPkn" },
+    _ScaleInit { func: scale_kbppkb, code: "KBPPkb" },
+    _ScaleInit { func: scale_krppkrp, code: "KRPPkrp" },
 ];
 
 #[derive(Clone, Copy)]
@@ -50,17 +49,52 @@ pub struct EvalEntry {
     pub key: [Key; 2],
 }
 
+impl EvalEntry {
+    const fn new(func: EvalFn, key: [Key; 2]) -> Self {
+        Self {
+            func,
+            key,
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct ScaleEntry {
     pub func: ScaleFn,
     pub key: [Key; 2],
 }
 
-pub static mut EVAL_FNS: [EvalEntry; 8] =
-    [EvalEntry { func: evaluate_kpk, key: [Key(0); 2] }; 8];
+impl ScaleEntry {
+    const fn new(func: ScaleFn, key: [Key; 2]) -> Self {
+        Self {
+            func,
+            key,
+        }
+    }
+}
 
-pub static mut SCALE_FNS: [ScaleEntry; 8] =
-    [ScaleEntry { func: scale_knpk, key: [Key(0); 2] }; 8];
+pub const EVAL_FNS: [EvalEntry; 8] = [
+    EvalEntry::new(evaluate_kpk, [Key(5505784501994623672), Key(16708138885880092096), ]),
+    EvalEntry::new(evaluate_knnk, [Key(14120739686494291820), Key(8377647743846138917), ]),
+    EvalEntry::new(evaluate_kbnk, [Key(1611752040564062886), Key(13498337015795974735), ]),
+    EvalEntry::new(evaluate_krkp, [Key(15187272080959532759), Key(5765289435653855904), ]),
+    EvalEntry::new(evaluate_krkb, [Key(4707547257721156821), Key(8136827787693077145), ]),
+    EvalEntry::new(evaluate_krkn, [Key(13716066277753725575), Key(2516297353485851682), ]),
+    EvalEntry::new(evaluate_kqkp, [Key(2610381384162427170), Key(2621138910727520238), ]),
+    EvalEntry::new(evaluate_kqkr, [Key(11228238082856667367), Key(1823126336269648476), ]),
+];
+
+pub const SCALE_FNS: [ScaleEntry; 8] =
+    [
+        ScaleEntry::new(scale_knpk, [Key(3942806916825617055), Key(2937243919527647309), ]),
+        ScaleEntry::new(scale_knpkb, [Key(479192261694703936), Key(8025071134455505), ]),
+        ScaleEntry::new(scale_krpkr, [Key(7284942403830489527), Key(14892861473490773711), ]),
+        ScaleEntry::new(scale_krpkb, [Key(5287931510081630832), Key(15234132890424275780), ]),
+        ScaleEntry::new(scale_kbpkb, [Key(6099580396785330171), Key(18379561798663200899), ]),
+        ScaleEntry::new(scale_kbpkn, [Key(12370192853161193897), Key(12470798101551402552), ]),
+        ScaleEntry::new(scale_kbppkb, [Key(17859451234110186712), Key(15650891410479767602), ]),
+        ScaleEntry::new(scale_krppkrp, [Key(7343002825884738377), Key(16193381453883531483), ]),
+    ];
 
 // Table used to drive the king towards the edge of the board
 // in KX v K and KQ vs KR endgames.
@@ -95,7 +129,7 @@ const PUSH_AWAY: [i32; 8] = [0, 5, 20, 40, 60, 80, 90, 100];
 // Pawn rank based scaling factors used in KRPPKRP endgames.
 const KRPPKRP_SCALE_FACTORS: [i32; 8] = [0, 9, 10, 14, 21, 44, 0, 0];
 
-fn calc_key(code: &str, c: Color) -> Key {
+fn _calc_key(code: &str, c: Color) -> Key {
     let mut cnt: [i32; 16] = [0; 16];
     let mut key = Key(0);
 
@@ -111,23 +145,26 @@ fn calc_key(code: &str, c: Color) -> Key {
     key
 }
 
-pub fn init() {
+pub fn _generate_eval_scale() {
+    let mut eval_fns: [EvalEntry; 8] =
+        [EvalEntry { func: evaluate_kpk, key: [Key(0); 2] }; 8];
+
+    let mut scale_fns: [ScaleEntry; 8] =
+        [ScaleEntry { func: scale_knpk, key: [Key(0); 2] }; 8];
+
+
     for i in 0..8 {
-        let ei = &EVAL_INITS[i];
-        unsafe {
-            EVAL_FNS[i].func = ei.func;
-            EVAL_FNS[i].key[WHITE.0 as usize] = calc_key(ei.code, WHITE);
-            EVAL_FNS[i].key[BLACK.0 as usize] = calc_key(ei.code, BLACK);
-        }
+        let ei = &_EVAL_INITS[i];
+        eval_fns[i].func = ei.func;
+        eval_fns[i].key[WHITE.0 as usize] = _calc_key(ei.code, WHITE);
+        eval_fns[i].key[BLACK.0 as usize] = _calc_key(ei.code, BLACK);
     }
 
     for i in 0..8 {
-        let si = &SCALE_INITS[i];
-        unsafe {
-            SCALE_FNS[i].func = si.func;
-            SCALE_FNS[i].key[WHITE.0 as usize] = calc_key(si.code, WHITE);
-            SCALE_FNS[i].key[BLACK.0 as usize] = calc_key(si.code, BLACK);
-        }
+        let si = &_SCALE_INITS[i];
+        scale_fns[i].func = si.func;
+        scale_fns[i].key[WHITE.0 as usize] = _calc_key(si.code, WHITE);
+        scale_fns[i].key[BLACK.0 as usize] = _calc_key(si.code, BLACK);
     }
 }
 

@@ -30,12 +30,9 @@ fn main() {
     println!("{}", misc::engine_info(false));
 
     ucioption::init();
-    psqt::init();
     bitboard::init();
-    bitbases::init();
     search::init();
     pawns::init();
-    endgame::init();
     tt::resize(ucioption::get_i32("Hash") as usize);
     threads::init(ucioption::get_i32("Threads") as usize);
     tb::init(ucioption::get_string("SyzygyPath"));

@@ -135,10 +135,12 @@ fn imbalance(pc: &[[i32; 6]; 2], us: Color) -> i32 {
 // don't have to recompute all when the same material configuration occurs
 // again.
 
+// TODO change this to COW ptr
+
 pub fn probe(pos: &Position) -> &'static mut Entry {
     let key = pos.material_key();
     let e = pos.material_table[(key.0 & 8191) as usize].get();
-    let e: &'static mut Entry = unsafe { &mut *e };
+    let e: &'static mut Entry = unsafe { e.as_mut().unwrap_unchecked() };
 
     if e.key == key {
         return e;
@@ -163,7 +165,7 @@ pub fn probe(pos: &Position) -> &'static mut Entry {
     // Let's look if we have a specialized evaluation function for this
     // particular material configuration. First we look for a fixed
     // configuartion one, then for a generic one.
-    for entry in unsafe { EVAL_FNS.iter() } {
+    for entry in EVAL_FNS.iter() {
         for c in 0..2 {
             if entry.key[c] == key {
                 e.evaluation_function = Some(entry.func);
@@ -184,7 +186,7 @@ pub fn probe(pos: &Position) -> &'static mut Entry {
     // OK, we didn't find any special evaluation function for the current
     // material configuration. Is there a suitable specialized scaling
     // function?
-    for entry in unsafe { SCALE_FNS.iter() } {
+    for entry in SCALE_FNS.iter() {
         for c in 0..2 {
             if entry.key[c] == key {
                 e.scaling_function[c] = Some(entry.func);

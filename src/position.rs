@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std;
+use ::{misc, std};
 use std::sync::Arc;
 
 use bitboard::*;
-use material;
 use movegen::*;
 use movepick::*;
-use pawns;
+use ::{material, pawns};
 use psqt;
 use search;
 use tb;
@@ -79,6 +78,40 @@ pub mod zobrist {
     pub fn no_pawns() -> Key {
         NO_PAWNS
     }
+}
+
+pub fn _generate_keys() {
+    let mut rng = misc::Prng::_new(1070372);
+
+    let mut temp_psq = [[Key(0); 64]; 16];
+
+    for i in 1..15 {
+        if i != 7 && i != 8 {
+            for s in 0..64 {
+                temp_psq[i][s] = Key(rng._rand64());
+            }
+        }
+    }
+
+    let mut enpassant = [Key(0); 8];
+
+    for f in 0..8 {
+        enpassant[f] = Key(rng._rand64());
+    }
+
+    let mut castling = [Key(0); 16];
+
+    for cr in 0..16 {
+        let b = Bitboard(cr);
+        for s in b {
+            let k = castling[1usize << s.0];
+            castling[cr as usize] ^=
+                if k.0 != 0 { k } else { Key(rng._rand64()) };
+        }
+    }
+
+    let _side = Key(rng._rand64());
+    let _no_pawns = Key(rng._rand64());
 }
 
 #[derive(Clone)]
