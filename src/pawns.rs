@@ -15,8 +15,45 @@ const ISOLATED: Score = Score::new(13, 18);
 const BACKWARD: Score = Score::new(24, 12);
 
 // Connected pawn bonus by opposed, phalanx, #support and rank
-static mut CONNECTED: [[[[Score; 8]; 3]; 2]; 2] =
-    [[[[Score::ZERO; 8]; 3]; 2]; 2];
+const CONNECTED: [[[[Score; 8]; 3]; 2]; 2] = [
+    [
+        [
+            [
+                Score(0), Score(-196595), Score(24), Score(262162), Score(2490444), Score(4915300), Score(11468975), Score(0), ],
+            [
+                Score(0), Score(-458722), Score(41), Score(524323), Score(3014749), Score(5701749), Score(12583104), Score(0), ],
+            [
+                Score(0), Score(-720849), Score(58), Score(852020), Score(3604590), Score(6553734), Score(13697233), Score(0), ],
+        ],
+        [
+            [
+                Score(0), Score(-262126), Score(21), Score(720943), Score(2883672), Score(6684809), Score(16515324), Score(0), ],
+            [
+                Score(0), Score(-524253), Score(38), Score(1048640), Score(3407977), Score(7536794), Score(17629453), Score(0), ],
+            [
+                Score(0), Score(-851916), Score(55), Score(1310801), Score(3997818), Score(8388779), Score(18743582), Score(0), ],
+        ],
+    ],
+    [
+        [
+            [
+                Score(0), Score(-65530), Score(12), Score(131081), Score(1245222), Score(2424882), Score(5701719), Score(0), ],
+            [
+                Score(0), Score(-327657), Score(29), Score(393242), Score(1769527), Score(3276867), Score(6815848), Score(0), ],
+            [
+                Score(0), Score(-655320), Score(46), Score(655403), Score(2359368), Score(4128852), Score(7929977), Score(0), ],
+        ],
+        [
+            [
+                Score(0), Score(-131063), Score(10), Score(327703), Score(1441836), Score(3342404), Score(8257662), Score(0), ],
+            [
+                Score(0), Score(-393190), Score(27), Score(655400), Score(1966141), Score(4128853), Score(9371791), Score(0), ],
+            [
+                Score(0), Score(-655317), Score(44), Score(917561), Score(2555982), Score(4980838), Score(10485920), Score(0), ],
+        ],
+    ],
+];
+// [[[[Score::ZERO; 8]; 3]; 2]; 2];
 
 // Doubled pawn penalty
 const DOUBLED: Score = Score::new(18, 38);
@@ -246,7 +283,9 @@ impl Entry {
 
 // pawns::init() initializes some tables needed by evaluation.
 
-pub fn init() {
+pub fn _generate_connected() {
+    let mut connected = [[[[Score::ZERO; 8]; 3]; 2]; 2];
+
     const SEED: [i32; 8] = [0, 13, 24, 18, 76, 100, 175, 330];
 
     for opposed in 0..2 {
@@ -257,11 +296,9 @@ pub fn init() {
                         (if phalanx != 0
                         { (SEED[(r + 1) as usize] - SEED[r as usize]) / 2 } else { 0 }))
                         >> opposed);
-                    unsafe {
-                        CONNECTED[opposed as usize][phalanx as usize]
-                            [support as usize][r as usize] =
-                            Score::new(v, v * (r - 2) / 4);
-                    }
+                    connected[opposed as usize][phalanx as usize]
+                        [support as usize][r as usize] =
+                        Score::new(v, v * (r - 2) / 4);
                 }
             }
         }
@@ -380,10 +417,7 @@ fn evaluate<Us: ColorTrait>(pos: &Position, e: &mut Entry) -> Score {
 
         // Score this pawn
         if supported | phalanx != 0 {
-            score += unsafe {
-                CONNECTED[(opposed != 0) as usize][(phalanx != 0) as usize]
-                    [Bitboard::pop_count(supported) as usize][s.relative_rank(us) as usize]
-            };
+            score += CONNECTED[(opposed != 0) as usize][(phalanx != 0) as usize][Bitboard::pop_count(supported) as usize][s.relative_rank(us) as usize];
         } else if neighbours == 0 {
             score -= ISOLATED;
             e.weak_unopposed[us.0 as usize] += (opposed == 0) as i32;

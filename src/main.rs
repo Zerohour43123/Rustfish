@@ -31,8 +31,6 @@ fn main() {
 
     ucioption::init();
     bitboard::init();
-    search::init();
-    pawns::init();
     tt::resize(ucioption::get_i32("Hash") as usize);
     threads::init(ucioption::get_i32("Threads") as usize);
     tb::init(ucioption::get_string("SyzygyPath"));
